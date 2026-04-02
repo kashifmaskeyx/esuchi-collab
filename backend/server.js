@@ -13,8 +13,8 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", require("./routes/authRoute"));
-// app.use('/api/users', require('./routes/users'));
-// app.use('/api/products', require('./routes/products'));
+// app.use("/api/users", require("./routes/users"));
+app.use("/api/products", require("./routes/productRoute"));
 // app.use('/api/inventory', require('./routes/inventory'));
 // app.use('/api/shipments', require('./routes/shipments'));
 
