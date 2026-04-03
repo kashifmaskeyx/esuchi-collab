@@ -8,16 +8,14 @@ const API = axios.create({
   },
 });
 
-
 export const registerUser = async (userData) => {
   try {
-    const response = await API.post("/auth/register", userData);
+    const response = await API.post("/api/auth/register", userData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Registration failed" };
   }
 };
-
 
 export const verifyOtp = async (data) => {
   try {
@@ -28,10 +26,9 @@ export const verifyOtp = async (data) => {
   }
 };
 
-
 export const loginUser = async (data) => {
   try {
-    const response = await API.post("/auth/login", data);
+    const response = await API.post("/api/auth/login", data);
 
     // Save token (if backend returns it)
     if (response.data.token) {
@@ -43,7 +40,6 @@ export const loginUser = async (data) => {
     throw error.response?.data || { message: "Login failed" };
   }
 };
-
 
 export const logoutUser = () => {
   localStorage.removeItem("token");
