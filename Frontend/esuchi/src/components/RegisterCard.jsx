@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "../css/RegisterCard.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/auth.js";
+import logo from "../assets/logo.png";
+import signUpBg from "../assets/Sign-Up.png";
 
 export default function RegisterCard() {
   const [form, setForm] = useState({
@@ -11,7 +13,6 @@ export default function RegisterCard() {
     email: "",
     phone: "+977 ",
     password: "",
-    confirmPassword: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -57,15 +58,6 @@ export default function RegisterCard() {
     }
   };
 
-  // Password match validation
-  useEffect(() => {
-    if (form.confirmPassword && form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-    } else {
-      setError("");
-    }
-  }, [form.password, form.confirmPassword]);
-
   // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,98 +88,111 @@ export default function RegisterCard() {
   };
 
   return (
-    <div className="signup-container">
-      <div className="card">
-        <h2>Create Account</h2>
+    <div className="register-page">
+      <div className="register-left">
+        <div className="register-form-wrapper">
+          <img src={logo} alt="eSuchi logo" className="register-logo" />
+          <h2 className="register-title">Create an account</h2>
 
-        <p className="login-text">
-          Already have an account?{" "}
-          <span onClick={() => navigate("/login")}>Log in</span>
-        </p>
+          <p className="register-login-text">
+            Already have an account?{" "}
+            <span onClick={() => navigate("/login")}>Log in</span>
+          </p>
 
-        <form onSubmit={handleSubmit}>
-          <div className="name-row">
+          <form onSubmit={handleSubmit} className="register-form">
+            <div className="register-name-row">
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First name"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+                className="register-input"
+              />
+
+              <input
+                type="text"
+                name="lastName"
+                placeholder="Last name"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                className="register-input"
+              />
+            </div>
+
             <input
-              type="text"
-              name="firstName"
-              placeholder="First name"
-              value={form.firstName}
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={form.email}
               onChange={handleChange}
               required
+              className="register-input"
             />
 
             <input
-              type="text"
-              name="lastName"
-              placeholder="Last name"
-              value={form.lastName}
+              type="tel"
+              name="phone"
+              value={form.phone}
               onChange={handleChange}
-              required
-            />
-          </div>
-
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="tel"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            onKeyDown={handlePhoneKeyDown}
-            maxLength={15}
-          />
-
-          <div className="password-field">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={handleChange}
-              required
+              onKeyDown={handlePhoneKeyDown}
+              maxLength={15}
+              className="register-input"
             />
 
-            <span onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </span>
-          </div>
+            <div className="register-password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                className="register-input"
+              />
 
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm password"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            required
-          />
+              <span
+                className="register-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </span>
+            </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create account"}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="register-submit-btn"
+            >
+              {loading ? "Creating..." : "Create account"}
+            </button>
 
-          <div className="divider">
-            <span></span>
-            <p>OR</p>
-            <span></span>
-          </div>
+            <div className="register-divider">
+              <span className="register-divider-line"></span>
+              <p className="register-divider-text">Or register with</p>
+              <span className="register-divider-line"></span>
+            </div>
 
-          <button type="button" className="google-btn">
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              alt="google"
-            />
-            Continue with Google
-          </button>
+            <button type="button" className="register-google-btn">
+              <img
+                src="https://www.svgrepo.com/show/475656/google-color.svg"
+                alt="Google"
+              />
+              Google
+            </button>
 
-          {error && <p className="error">{error}</p>}
-        </form>
+            {error && <p className="register-error">{error}</p>}
+          </form>
+        </div>
+      </div>
+
+      <div
+        className="register-right"
+        style={{ backgroundImage: `url(${signUpBg})` }}
+      >
+        <div className="register-right-overlay" />
       </div>
     </div>
   );

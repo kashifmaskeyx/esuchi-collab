@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+* {
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
+}
+
+/* PAGE */
+.otp-page {
+  min-height: 100vh;
+  background-color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* CARD */
+.otp-card {
+  width: 100%;
+  max-width: 400px;
+  background: #f3f4f6;
+  border-radius: 14px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* LOGO */
+.otp-logo {
+  width: 70px;
+  margin-bottom: 16px;
+}
+
+/* TEXT */
+.otp-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.otp-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+/* OTP INPUTS */
+.otp-input-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.otp-input {
+  width: 48px;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.otp-input:focus {
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.15);
+}
+
+/* BUTTON */
+.otp-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.otp-btn:hover {
+  background-color: #1e40af;
+}
+
+/* RESEND */
+.otp-resend {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.otp-resend span {
+  color: #1e3a8a;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.otp-resend span:hover {
+  text-decoration: underline;
+}
