@@ -10,7 +10,7 @@ const API = axios.create({
 
 export const registerUser = async (userData) => {
   try {
-    const response = await API.post("/api/auth/register", userData);
+    const response = await API.post("/auth/register", userData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Registration failed" };
@@ -28,7 +28,7 @@ export const verifyOtp = async (data) => {
 
 export const loginUser = async (data) => {
   try {
-    const response = await API.post("/api/auth/login", data);
+    const response = await API.post("/auth/login", data);
 
     // Save token (if backend returns it)
     if (response.data.token) {
