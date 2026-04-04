@@ -1,153 +1,223 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 * {
-  font-family: "Inter", sans-serif;
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  font-family: "Inter", sans-serif;
 }
 
-.signup-container {
+.register-page {
   min-height: 100vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #f5f7fa;
-  padding: 20px;
-}
-
-.card {
-  width: 100%;
-  max-width: 420px;
   background: #ffffff;
-  padding: 28px;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-  text-align: center;
 }
 
-.card h2 {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 6px;
+.register-left {
+  width: 44%;
+  min-width: 360px;
+  background: #f8f8f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
 }
 
-.login-text {
-  font-size: 14px;
-  margin-bottom: 18px;
-  color: #6b7280;
+.register-form-wrapper {
+  width: 100%;
+  max-width: 360px;
 }
 
-.login-text span {
-  color: #2563eb;
-  cursor: pointer;
+.register-logo {
+  width: 86px;
+  margin-bottom: 24px;
+}
+
+.register-title {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.register-login-text {
+  font-size: 13px;
   font-weight: 500;
+  color: #111827;
+  margin-bottom: 28px;
 }
 
-form {
+.register-login-text span {
+  color: #16539a;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.register-login-text span:hover {
+  text-decoration: underline;
+}
+
+.register-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-input {
-  padding: 11px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
-  width: 100%;
-}
-
-input:focus {
-  border-color: #2563eb;
-}
-
-.name-row {
+.register-name-row {
   display: flex;
-  gap: 10px;
+  gap: 16px;
 }
 
-.name-row input {
-  flex: 1;
+.register-input {
+  width: 100%;
+  height: 50px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0 16px;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-@media (max-width: 480px) {
-  .name-row {
-    flex-direction: column;
-  }
+.register-input:focus {
+  border-color: #0f4b8f;
+  box-shadow: 0 0 0 3px rgba(15, 75, 143, 0.12);
 }
 
-.password-field {
+.register-input[type="password"]::-ms-reveal,
+.register-input[type="password"]::-ms-clear {
+  display: none;
+}
+
+.register-password-field {
   position: relative;
 }
 
-.password-field span {
+.register-password-toggle {
   position: absolute;
-  right: 10px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
+  color: #475467;
   cursor: pointer;
-  color: #6b7280;
+  display: flex;
+  align-items: center;
 }
 
-button {
-  padding: 12px;
-  border-radius: 8px;
-  background: #1e3a8a;
-  color: #fff;
-  font-weight: 500;
+.register-submit-btn {
+  width: 100%;
+  height: 50px;
   border: none;
+  border-radius: 10px;
+  background: #114b88;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
-button:hover {
-  background: #1e40af;
+.register-submit-btn:hover {
+  background: #0e3e70;
 }
 
-button:disabled {
-  opacity: 0.6;
+.register-submit-btn:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
-.divider {
+.register-divider {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 8px 0;
+  gap: 12px;
+  margin-top: 4px;
 }
 
-.divider span {
+.register-divider-line {
   flex: 1;
   height: 1px;
-  background: #e5e7eb;
+  background: #cfd4dc;
 }
 
-.divider p {
+.register-divider-text {
   font-size: 12px;
-  color: #6b7280;
+  color: #1f2937;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.google-btn {
+.register-google-btn {
+  width: 100%;
+  height: 50px;
+  border: 1px solid #b88b70;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  color: #111;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.google-btn img {
-  width: 18px;
+.register-google-btn:hover {
+  background: #faf7f5;
 }
 
-.google-btn:hover {
-  background: #f9fafb;
+.register-google-btn img {
+  width: 20px;
+  height: 20px;
 }
 
-.error {
-  color: red;
-  font-size: 13px;
-  text-align: left;
+.register-error {
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.register-right {
+  flex: 1;
+  position: relative;
+  min-height: 100vh;
+  background-size: 100% 100%;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.register-right-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 32, 73, 0.18);
+}
+
+@media (max-width: 980px) {
+  .register-page {
+    flex-direction: column;
+  }
+
+  .register-left {
+    width: 100%;
+    min-width: unset;
+    padding: 40px 24px;
+  }
+
+  .register-right {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 560px) {
+  .register-title {
+    font-size: 30px;
+  }
+
+  .register-name-row {
+    flex-direction: column;
+    gap: 16px;
+  }
 }

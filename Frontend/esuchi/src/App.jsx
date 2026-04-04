@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import LoginCard from "./components/LoginCard";
 import RegisterCard from "./components/RegisterCard";
+import OtpCard from "./components/OTPCard";
 import DashboardPage from "./pages/DashboardPage";
 
 const BlankPage = () => <div style={{ minHeight: "100vh", background: "#ffffff" }} />; // Replace when the component is ready
@@ -12,6 +13,7 @@ function App() {
       <Routes>
         <Route path="/register" element={<RegisterCard />} />
         <Route path="/login" element={<LoginCard />} />
+        <Route path="/otp" element={<OtpCard />} />
         <Route path="/" element={<RegisterCard />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/orders" element={<BlankPage />} />
