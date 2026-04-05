@@ -23,6 +23,8 @@ function App() {
         <Route path="/analytics" element={<BlankPage />} />
         <Route path="/marketing" element={<BlankPage />} />
         <Route path="/discounts" element={<BlankPage />} />
+        <Route path="/settings" element={<BlankPage />} />
+        <Route path="/help-center" element={<BlankPage />} />
       </Routes>
     </div>
   );

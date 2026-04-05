@@ -15,8 +15,9 @@
 
 /* ── LEFT PANEL ── */
 .login-left {
-  width: 42%;
+  width: 34%;
   min-width: 320px;
+  max-width: 480px;
   background-color: #ffffff;
   display: flex;
   align-items: center;
@@ -26,7 +27,7 @@
 
 .login-form-wrapper {
   width: 100%;
-  max-width: 340px;
+  max-width: 320px;
 }
 
 .login-logo {
@@ -217,8 +218,11 @@
 .login-right {
   flex: 1;
   position: relative;
-  background-size: cover;
-  background-position: center;
+  min-height: 100vh;
+  background-size: auto 100%;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: #0b2f5b;
   display: flex;
   align-items: flex-end;
   padding: 48px 40px;
@@ -227,7 +231,7 @@
 .login-right-overlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(10, 25, 60, 0.72);
+  background-color: rgba(10, 25, 60, 0.38);
 }
 
 /* ── FEATURES ── */
@@ -307,12 +311,14 @@
 
   .login-left {
     width: 100%;
+    max-width: none;
     min-width: unset;
   }
 
   .login-right {
     min-height: 400px;
     padding: 32px 24px;
+    background-size: auto 100%;
   }
 
   .login-feature-row {

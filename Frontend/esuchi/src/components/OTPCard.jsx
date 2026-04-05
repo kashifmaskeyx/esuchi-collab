@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import "../css/OTPCard.css";
 import logo from "../assets/logo.png";
+import wareBg from "../assets/ware.jpg";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function OtpCard() {
@@ -46,7 +47,10 @@ export default function OtpCard() {
   };
 
   return (
-    <div className="otp-page">
+    <div
+      className="otp-page"
+      style={{ backgroundImage: `url(${wareBg})` }}
+    >
       <div className="otp-card">
         <img src={logo} alt="logo" className="otp-logo" />
 
