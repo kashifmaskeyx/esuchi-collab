@@ -8,14 +8,38 @@
 /* PAGE */
 .otp-page {
   min-height: 100vh;
+  position: relative;
   background-color: #1e3a8a;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.otp-page::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  background-image: inherit;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(7px);
+  transform: scale(1.03);
+}
+
+.otp-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 25, 60, 0.28);
 }
 
 /* CARD */
 .otp-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 400px;
   background: #f3f4f6;
