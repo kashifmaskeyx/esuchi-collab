@@ -7,6 +7,11 @@ const {
   getMe,
   logout,
 } = require("../controllers/authController");
+const {
+  requestPasswordResetOtp,
+  verifyPasswordResetOtp,
+  resetPasswordAfterOtpVerified,
+} = require("../controllers/passwordResetController");
 const { protect } = require("../middlewares/authMiddleware");
 
 router.post(
@@ -32,5 +37,8 @@ router.post(
 
 router.get("/me", protect, getMe);
 router.post("/logout", protect, logout);
+router.post("/forgot-password", requestPasswordResetOtp);
+router.post("/verify-reset-otp", verifyPasswordResetOtp);
+router.post("/reset-password", resetPasswordAfterOtpVerified);
 
 module.exports = router;
