@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import LoginCard from "./components/LoginCard";
 import RegisterCard from "./components/RegisterCard";
 import OtpCard from "./components/OTPCard";
+import LandingPage from "./components/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
 
 const BlankPage = () => (
@@ -16,7 +17,7 @@ function App() {
         <Route path="/register" element={<RegisterCard />} />
         <Route path="/login" element={<LoginCard />} />
         <Route path="/otp" element={<OtpCard />} />
-        <Route path="/" element={<RegisterCard />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/orders" element={<BlankPage />} />
         <Route path="/products" element={<BlankPage />} />
