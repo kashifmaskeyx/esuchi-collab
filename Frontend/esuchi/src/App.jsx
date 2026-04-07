@@ -5,7 +5,9 @@ import RegisterCard from "./components/RegisterCard";
 import OtpCard from "./components/OTPCard";
 import DashboardPage from "./pages/DashboardPage";
 
-const BlankPage = () => <div style={{ minHeight: "100vh", background: "#ffffff" }} />; // Replace when the component is ready
+const BlankPage = () => (
+  <div style={{ minHeight: "100vh", background: "#ffffff" }} />
+); // Replace when the component is ready
 
 function App() {
   return (
