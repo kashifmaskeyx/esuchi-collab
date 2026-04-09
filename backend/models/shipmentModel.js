@@ -34,12 +34,11 @@ const shipmentSchema = new mongoose.Schema(
 );
 
 // Auto-generate shipmentId
-shipmentSchema.pre("save", async function (next) {
+shipmentSchema.pre("save", async function () {
   if (!this.shipmentId) {
     const count = await this.constructor.countDocuments();
     this.shipmentId = `SHP-${String(count + 1).padStart(4, "0")}`;
   }
-  next();
 });
 
 module.exports = mongoose.model("Shipment", shipmentSchema);
