@@ -4,7 +4,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 
-
 dotenv.config();
 
 const app = express();
@@ -19,7 +18,7 @@ app.use("/api/auth", require("./routes/authRoute"));
 // app.use("/api/users", require("./routes/users"));
 app.use("/api/products", require("./routes/productRoute"));
 // app.use('/api/inventory', require('./routes/inventory'));
-app.use('/api/shipments', require('./routes/shippmentRoute'));
+app.use("/api/shipments", require("./routes/shipmentRoute"));
 
 // Health check
 app.get("/", (req, res) => res.json({ message: "Inventory API running" }));
