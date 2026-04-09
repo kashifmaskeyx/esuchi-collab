@@ -3,13 +3,14 @@ import "../css/OTPCard.css";
 import logo from "../assets/logo.png";
 import wareBg from "../assets/ware.jpg";
 import { useLocation, useNavigate } from "react-router-dom";
+import { verifyResetOtp } from "../api/auth";
 
 export default function OtpCard() {
-  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const email = location.state?.email || "your email";
 
   const handleChange = (value, index) => {
@@ -31,20 +32,39 @@ export default function OtpCard() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const code = otp.join("");
+  const [loading, setLoading] = useState(false);
 
-    if (code.length !== 5) {
-      alert("Enter full OTP");
-      return;
-    }
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    console.log("OTP Submitted:", code);
+  const code = otp.join("");
 
-    // TODO: verify API
-    navigate("/dashboard");
-  };
+  if (code.length !== 6) {
+    alert("Enter full OTP");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const res = await verifyResetOtp({
+      email,
+      otp: code,
+    });
+
+    console.log(res);
+
+    // Go to reset password page
+    navigate("/reset-password", { state: { email } });
+
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Invalid OTP");
+  } finally {
+    setLoading(false);
+  }
+};
+    
 
   return (
     <div
