@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { protect, adminOnly } = require("../middleware/authMiddleware");
-const Shipment = require("../models/shipmentModel");
+const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const Shipment = require("../models/shippmentModel");
 
 // GET all shipments
 router.get("/", protect, async (req, res) => {
