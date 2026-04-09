@@ -8,6 +8,7 @@ const signToken = (id) =>
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
  
   try {
     const { name, email, password, role } = req.body;
