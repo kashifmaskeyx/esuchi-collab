@@ -1,5 +1,9 @@
 // controllers/shipmentController.js
 const Shipment = require("../models/shipmentModel");
+const express = require("express");
+const router = express.Router();
+const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const Shipment = require("../models/shippmentModel");
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
@@ -24,7 +28,9 @@ exports.getShipmentById = async (req, res) => {
       .populate("createdBy", "name");
 
     if (!shipment)
-      return res.status(404).json({ success: false, message: "Shipment not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Shipment not found" });
 
     res.json({ success: true, data: shipment });
   } catch (err) {
@@ -52,17 +58,21 @@ exports.updateShipmentStatus = async (req, res) => {
     const allowed = ["pending", "in_transit", "delivered", "cancelled"];
 
     if (!allowed.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status value" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status value" });
     }
 
     const shipment = await Shipment.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true }
+      { new: true },
     );
 
     if (!shipment)
-      return res.status(404).json({ success: false, message: "Shipment not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Shipment not found" });
 
     res.json({ success: true, data: shipment });
   } catch (err) {
@@ -76,7 +86,9 @@ exports.deleteShipment = async (req, res) => {
     const shipment = await Shipment.findByIdAndDelete(req.params.id);
 
     if (!shipment)
-      return res.status(404).json({ success: false, message: "Shipment not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Shipment not found" });
 
     res.json({ success: true, message: "Shipment deleted" });
   } catch (err) {
