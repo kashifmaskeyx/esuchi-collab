@@ -8,7 +8,11 @@
   border-right: 1px solid #d9e2e8;
   padding: 16px 0 12px;
   z-index: 25;
-  transition: transform 0.25s ease;
+  transition:
+    transform 0.28s ease,
+    width 0.28s ease,
+    padding 0.28s ease,
+    background-color 0.28s ease;
   display: flex;
   flex-direction: column;
 }
@@ -30,10 +34,12 @@
   gap: 8px;
   padding: 0 18px;
   margin-bottom: 18px;
+  transition: padding 0.28s ease, gap 0.28s ease, margin-bottom 0.28s ease;
 }
 
 .sidebar-logo {
   width: 96px;
+  transition: width 0.28s ease, opacity 0.2s ease, transform 0.28s ease;
 }
 
 .sidebar-panel.closed .sidebar-header {
@@ -61,6 +67,11 @@
   background: #ffffff;
   color: #31353b;
   cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .sidebar-nav {
@@ -82,6 +93,7 @@
   font-weight: 800;
   color: #111827;
   letter-spacing: 0.08em;
+  transition: margin 0.28s ease, opacity 0.2s ease, color 0.2s ease;
 }
 
 .sidebar-panel.closed .sidebar-group-label {
@@ -111,6 +123,16 @@
   text-decoration: none;
   font-size: 0.9rem;
   line-height: 1;
+  transition:
+    background-color 0.22s ease,
+    color 0.22s ease,
+    padding 0.28s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-link svg,
+.sidebar-link span {
+  transition: transform 0.22s ease, opacity 0.22s ease, color 0.22s ease;
 }
 
 .sidebar-panel.closed .sidebar-link {
@@ -144,6 +166,15 @@
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    padding 0.28s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-logout-btn:hover {
+  background: rgba(31, 90, 147, 0.08);
 }
 
 .sidebar-panel.closed .sidebar-logout-btn {

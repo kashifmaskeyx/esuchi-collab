@@ -1,0 +1,490 @@
+.shipping-page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #111111;
+}
+
+.shipping-main {
+  min-height: 100vh;
+  padding: 34px 34px 20px;
+}
+
+.shipping-main.with-sidebar {
+  margin-left: 250px;
+}
+
+.shipping-main.with-collapsed-sidebar {
+  margin-left: 72px;
+}
+
+.shipping-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.shipping-page-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.shipping-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.shipping-icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #ded9d3;
+  border-radius: 10px;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111111;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.shipping-search {
+  width: min(100%, 290px);
+  height: 40px;
+  border: 1px solid #ded9d3;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.shipping-search svg {
+  color: #111111;
+}
+
+.shipping-search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #111111;
+}
+
+.shipping-profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #efefef;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111111;
+  flex-shrink: 0;
+}
+
+.shipping-profile-avatar {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.shipping-hero {
+  margin-bottom: 28px;
+}
+
+.shipping-hero h2 {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.shipping-hero p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #555555;
+  font-weight: 600;
+}
+
+.shipping-stats-grid,
+.shipping-dashboard-grid {
+  display: grid;
+  gap: 28px;
+}
+
+.shipping-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.shipping-dashboard-grid {
+  grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr);
+  margin-bottom: 28px;
+}
+
+.shipping-stat-card,
+.shipping-panel {
+  background: #ffffff;
+  border: 1px solid #d8d8d8;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08), 0 10px 16px rgba(0, 0, 0, 0.04);
+}
+
+.shipping-stat-card {
+  padding: 14px 14px 16px;
+}
+
+.shipping-stat-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shipping-stat-head p,
+.shipping-panel-head p,
+.shipping-chart-summary p {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #555555;
+}
+
+.shipping-stat-head h2 {
+  margin: 10px 0 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.shipping-stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #efefef;
+  color: #111111;
+}
+
+.shipping-stat-note {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #37aa49;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.shipping-panel {
+  padding: 14px 14px 16px;
+}
+
+.shipping-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.shipping-panel-head h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #111111;
+}
+
+.shipping-filter-btn {
+  border: none;
+  background: #efefef;
+  color: #111111;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shipping-chart-wrap {
+  overflow-x: auto;
+}
+
+.shipping-chart {
+  min-width: 620px;
+  width: 100%;
+  height: 250px;
+  fill: none;
+}
+
+.shipping-grid-line {
+  stroke: #e7e7e7;
+  stroke-width: 1;
+}
+
+.shipping-line {
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.shipping-line.orange {
+  stroke: #f97316;
+}
+
+.shipping-line.green {
+  stroke: #22c55e;
+}
+
+.shipping-line.yellow {
+  stroke: #eab308;
+}
+
+.shipping-point {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.shipping-point.orange {
+  fill: #f97316;
+}
+
+.shipping-point.green {
+  fill: #22c55e;
+}
+
+.shipping-point.yellow {
+  fill: #eab308;
+}
+
+.shipping-chart-labels {
+  min-width: 620px;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  padding: 0 4px;
+  margin-top: 8px;
+  color: #555555;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.shipping-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #ececec;
+}
+
+.shipping-chart-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.shipping-partner-table {
+  display: grid;
+}
+
+.shipping-partners-head {
+  justify-content: center;
+  text-align: center;
+}
+
+.shipping-partners-head .shipping-panel-head h3,
+.shipping-partners-head h3 {
+  font-size: 0.95rem;
+}
+
+.shipping-partner-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.9fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 16px 10px;
+  border-bottom: 1px solid #ececec;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #111111;
+}
+
+.shipping-partner-head {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: #5f6470;
+}
+
+.shipping-partner-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shipping-partner-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #d7dbe2;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.shipping-partner-row:last-child {
+  border-bottom: none;
+}
+
+.shipping-table-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shipping-table-search {
+  width: 220px;
+  height: 36px;
+}
+
+.shipping-table-wrap {
+  overflow-x: auto;
+}
+
+.shipping-table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.shipping-table th,
+.shipping-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid #ececec;
+}
+
+.shipping-table th {
+  padding-top: 6px;
+  padding-bottom: 8px;
+  background: #f1f1f1;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: #111111;
+}
+
+.shipping-table td {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #111111;
+}
+
+.shipping-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.shipping-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.shipping-status.delivered {
+  background: #b9e8b8;
+  color: #37aa49;
+}
+
+.shipping-status.in-transit {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.shipping-status.pending {
+  background: #fde68a;
+  color: #a16207;
+}
+
+@media (max-width: 1200px) {
+  .shipping-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shipping-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .shipping-main.with-sidebar,
+  .shipping-main.with-collapsed-sidebar {
+    margin-left: 0;
+  }
+
+  .shipping-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shipping-topbar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .shipping-main {
+    padding: 18px 12px;
+  }
+
+  .shipping-stats-grid,
+  .shipping-chart-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-topbar-right {
+    width: 100%;
+  }
+
+  .shipping-search {
+    width: 100%;
+    order: 2;
+    flex: 1 0 100%;
+  }
+
+  .shipping-table-tools {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shipping-table-search {
+    width: 100%;
+  }
+}
