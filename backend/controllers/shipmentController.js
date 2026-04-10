@@ -3,7 +3,7 @@ const Shipment = require("../models/shipmentModel");
 const express = require("express");
 const router = express.Router();
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
-const Shipment = require("../models/shippmentModel");
+
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
