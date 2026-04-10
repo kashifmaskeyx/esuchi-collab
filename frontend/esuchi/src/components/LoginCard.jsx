@@ -21,7 +21,7 @@ export default function LoginCard() {
     setLoading(true);
     try {
       await loginUser(form);
-      navigate("/otp", { state: { email: form.email, source: "login" } });
+      navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {

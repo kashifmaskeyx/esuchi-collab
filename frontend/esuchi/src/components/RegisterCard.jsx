@@ -79,7 +79,12 @@ export default function RegisterCard() {
         phone: phoneDigits,
       });
 
-      navigate("/otp", { state: { email: form.email } });
+      navigate("/login", {
+        state: {
+          email: form.email,
+          registered: true,
+        },
+      });
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {

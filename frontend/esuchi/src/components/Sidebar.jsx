@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Package,
   Users,
+  Truck,
   Landmark,
   BarChart3,
   Megaphone,
@@ -24,6 +25,7 @@ const mainItems = [
   { label: "Orders", icon: ShoppingCart, path: "/orders" },
   { label: "Products", icon: Package, path: "/products" },
   { label: "Customers", icon: Users, path: "/customers" },
+  { label: "Shipment", icon: Truck, path: "/shipment" },
   { label: "Finances", icon: Landmark, path: "/finances" },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Marketing", icon: Megaphone, path: "/marketing" },
@@ -37,6 +39,11 @@ const secondaryItems = [
 
 function Sidebar({ isOpen, onClose, onToggle }) {
   const navigate = useNavigate();
+  const handleNavClick = () => {
+    if (window.innerWidth <= 980) {
+      onClose();
+    }
+  };
 
   return (
     <aside className={`sidebar-panel ${isOpen ? "open" : "closed"}`}>
@@ -70,7 +77,7 @@ function Sidebar({ isOpen, onClose, onToggle }) {
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
-                  onClick={onClose}
+                  onClick={handleNavClick}
                 >
                   <Icon size={17} />
                   <span>{label}</span>
@@ -90,7 +97,7 @@ function Sidebar({ isOpen, onClose, onToggle }) {
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? "active" : ""}`
                   }
-                  onClick={onClose}
+                  onClick={handleNavClick}
                 >
                   <Icon size={17} />
                   <span>{label}</span>

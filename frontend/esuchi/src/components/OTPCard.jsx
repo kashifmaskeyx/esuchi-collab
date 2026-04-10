@@ -2,16 +2,23 @@ import React, { useState, useRef } from "react";
 import "../css/OTPCard.css";
 import logo from "../assets/logo.png";
 import wareBg from "../assets/ware.jpg";
-import { useLocation, useNavigate } from "react-router-dom";
-import { verifyResetOtp } from "../api/auth";
+import { verifyOtp } from "../api/auth";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 export default function OtpCard() {
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
   
   const email = location.state?.email || "your email";
+  const source = location.state?.source;
+
+  if (source !== "forgot-password") {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
@@ -20,7 +27,6 @@ export default function OtpCard() {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Move forward
     if (value && index < otp.length - 1) {
       inputsRef.current[index + 1].focus();
     }
@@ -32,12 +38,11 @@ export default function OtpCard() {
     }
   };
 
-  const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
+    setError("");
 
-  const code = otp.join("");
+    const code = otp.join("");
 
   if (code.length !== 6) {
     alert("Enter full OTP");
@@ -76,7 +81,7 @@ export default function OtpCard() {
 
         <h2 className="otp-title">Enter Verification code</h2>
         <p className="otp-subtitle">
-          We’ve sent a code to <strong>{email}</strong>
+          We&apos;ve sent a code to <strong>{email}</strong>
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -95,13 +100,15 @@ export default function OtpCard() {
             ))}
           </div>
 
-          <button type="submit" className="otp-btn">
-            Verify
+          <button type="submit" className="otp-btn" disabled={loading}>
+            {loading ? "Verifying..." : "Verify"}
           </button>
         </form>
 
+        {error && <p className="otp-error">{error}</p>}
+
         <p className="otp-resend">
-          Didn’t get a code? <span>Click to resend</span>
+          Didn&apos;t get a code? <span>Click to resend</span>
         </p>
       </div>
     </div>

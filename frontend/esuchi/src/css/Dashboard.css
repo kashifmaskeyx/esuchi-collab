@@ -7,7 +7,6 @@
 .dashboard-main {
   min-height: 100vh;
   padding: 34px 34px 20px;
-  transition: margin-left 0.25s ease;
 }
 
 .dashboard-main.with-sidebar {
@@ -105,8 +104,12 @@
 }
 
 .quick-cards-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 28px;
+}
+
+.shipment-card .dashboard-card-icon {
+  color: #2563eb;
 }
 
 .dashboard-content-grid {
