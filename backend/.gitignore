@@ -5,3 +5,6 @@ dist/
 build/
 logs/
 *.log
+
+node_modules/
+frontend/esuchi/node_modules/
