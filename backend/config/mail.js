@@ -30,5 +30,4 @@ async function sendPasswordResetOtp(email, otp) {
     html: `<p>Your password reset code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`,
   });
 }
-
 module.exports = { getTransporter, sendPasswordResetOtp };

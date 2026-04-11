@@ -17,12 +17,30 @@ export const registerUser = async (userData) => {
   }
 };
 
+export const requestPasswordResetOtp = async (data) => {
+  try {
+    const response = await API.post("/auth/forgot-password", data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to send OTP" };
+  }
+};
+
 export const verifyOtp = async (data) => {
   try {
-    const response = await API.post("/auth/verify-otp", data);
+    const response = await API.post("/auth/verify-reset-otp", data);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "OTP verification failed" };
+  }
+};
+
+export const resetPassword = async (data) => {
+  try {
+    const response = await API.post("/auth/reset-password", data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Password reset failed" };
   }
 };
 

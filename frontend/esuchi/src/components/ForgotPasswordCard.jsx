@@ -3,20 +3,35 @@ import { useNavigate } from "react-router-dom";
 import "../css/ForgotPasswordCard.css";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
+import { requestPasswordResetOtp } from "../api/auth";
 
 export default function ForgotPasswordCard() {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
 
-    navigate("/otp", {
-      state: {
-        email,
-        source: "forgot-password",
-      },
-    });
+    try {
+      const response = await requestPasswordResetOtp({ email });
+      setMessage(response.message || "OTP sent to your email");
+      navigate("/otp", {
+        state: {
+          email,
+          source: "forgot-password",
+        },
+      });
+    } catch (err) {
+      setError(err.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,10 +55,13 @@ export default function ForgotPasswordCard() {
               className="forgot-input"
             />
 
-            <button type="submit" className="forgot-btn">
-              Send OTP
+            <button type="submit" className="forgot-btn" disabled={loading}>
+              {loading ? "Sending..." : "Send OTP"}
             </button>
           </form>
+
+          {error && <p className="forgot-error">{error}</p>}
+          {message && <p className="forgot-success">{message}</p>}
 
           <p className="forgot-back">
             Remember your password?{" "}
