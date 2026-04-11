@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   Bell,
-  CircleUserRound,
   Clock3,
   PackageCheck,
+  Truck,
   Search,
   ShoppingBag,
   Trophy,
@@ -12,7 +13,6 @@ import {
   BarChart3,
   Boxes,
 } from "lucide-react";
-import Sidebar from "../components/Sidebar";
 import DashboardCard from "../components/DashboardCard";
 import "../css/Dashboard.css";
 
@@ -24,6 +24,11 @@ const summaryCards = [
 const salesCards = [
   { label: "To be delivered", value: "200" },
   { label: "To be ordered", value: "20" },
+];
+
+const shipmentCards = [
+  { label: "In Transit", value: "48" },
+  { label: "Delivered Today", value: "16" },
 ];
 
 const revenueBars = [
@@ -60,22 +65,10 @@ const products = [
 ];
 
 export default function DashboardPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { sidebarOpen } = useOutletContext();
 
   return (
     <div className="dashboard-page">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onToggle={() => setSidebarOpen((current) => !current)}
-      />
-      <button
-        className={`sidebar-backdrop ${sidebarOpen ? "show" : ""}`}
-        type="button"
-        onClick={() => setSidebarOpen(false)}
-        aria-label="Close sidebar"
-      />
-
       <main
         className={`dashboard-main ${
           sidebarOpen ? "with-sidebar" : "with-collapsed-sidebar"
@@ -97,7 +90,6 @@ export default function DashboardPage() {
             </div>
 
             <div className="avatar-chip" aria-label="User profile">
-              <CircleUserRound size={18} />
               <span>A</span>
             </div>
           </div>
@@ -126,6 +118,20 @@ export default function DashboardPage() {
                   <div className="metric-box-footer">
                     <h4>{card.value}</h4>
                     <button type="button">view details</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="Shipment" icon={Truck} className="shipment-card">
+            <div className="metric-grid">
+              {shipmentCards.map((card) => (
+                <article key={card.label} className="metric-box">
+                  <p>{card.label}</p>
+                  <div className="metric-box-footer">
+                    <h4>{card.value}</h4>
+                    <button type="button">track shipment</button>
                   </div>
                 </article>
               ))}
