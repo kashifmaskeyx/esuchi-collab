@@ -19,6 +19,7 @@ app.use("/api/auth", require("./routes/authRoute"));
 app.use("/api/products", require("./routes/productRoute"));
 // app.use('/api/inventory', require('./routes/inventory'));
 app.use("/api/shipments", require("./routes/shipmentRoute"));
+app.use("/api/suppliers", require("./routes/supplierRoute"));
 
 // Health check
 app.get("/", (req, res) => res.json({ message: "Inventory API running" }));
