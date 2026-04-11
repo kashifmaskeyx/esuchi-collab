@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const shipmentSchema = new mongoose.Schema(
   {
     shipmentId: { type: String, unique: true },
-    supplier: {
-      type: String,
-      required: [true, "Supplier/Destination is required"],
-      trim: true,
-    },
+   supplier: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Supplier",
+  required: true,
+},
     products: [
       {
         product: {
