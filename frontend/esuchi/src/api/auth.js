@@ -26,6 +26,15 @@ export const verifyOtp = async (data) => {
   }
 };
 
+export const verifyResetOtp = async (data) => {
+  try {
+    const response = await API.post("/auth/verify-reset-otp", data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "OTP verification failed" };
+  }
+};
+
 export const loginUser = async (data) => {
   try {
     const response = await API.post("/auth/login", data);

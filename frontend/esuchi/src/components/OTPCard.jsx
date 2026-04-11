@@ -12,7 +12,7 @@ export default function OtpCard() {
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const email = location.state?.email || "your email";
   const source = location.state?.source;
 
@@ -44,28 +44,32 @@ export default function OtpCard() {
 
     const code = otp.join("");
 
-    if (code.length !== 5) {
-      setError("Enter the full OTP");
-      return;
-    }
+  if (code.length !== 6) {
+    alert("Enter full OTP");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      await verifyOtp({ email, otp: code });
-      navigate("/login", {
-        replace: true,
-        state: {
-          resetVerified: true,
-          email,
-        },
-      });
-    } catch (err) {
-      setError(err.message || "OTP verification failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const res = await verifyResetOtp({
+      email,
+      otp: code,
+    });
+
+    console.log(res);
+
+    // Go to reset password page
+    navigate("/reset-password", { state: { email } });
+
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Invalid OTP");
+  } finally {
+    setLoading(false);
+  }
+};
+    
 
   return (
     <div
