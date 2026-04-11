@@ -42,7 +42,7 @@ export default function LoginCard() {
             <input
               type="email"
               name="email"
-              placeholder="Username"
+              placeholder="Email"
               value={form.email}
               onChange={handleChange}
               required
