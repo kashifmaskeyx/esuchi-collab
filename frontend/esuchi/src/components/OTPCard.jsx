@@ -12,7 +12,7 @@ export default function OtpCard() {
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const email = location.state?.email || "your email";
   const source = location.state?.source;
 

@@ -25,7 +25,7 @@ async function sendPasswordResetOtp(email, otp) {
   await transporter.sendMail({
     from,
     to: email,
-    subject: "Esuchi — Password reset code",
+    subject: "Esuchi — OTP code",
     text: `Your password reset code is: ${otp}. It expires in 10 minutes.`,
     html: `<p>Your password reset code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`,
   });

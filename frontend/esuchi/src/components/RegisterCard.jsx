@@ -73,7 +73,7 @@ export default function RegisterCard() {
 
     try {
       await registerUser({
-        fullName,
+        name: fullName,
         email: form.email,
         password: form.password,
         phone: phoneDigits,
