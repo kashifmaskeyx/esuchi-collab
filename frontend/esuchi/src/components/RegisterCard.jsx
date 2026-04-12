@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "../css/RegisterCard.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { registerUser } from "../api/auth.js";
+import { requestSignupOtp } from "../api/auth";
 import logo from "../assets/logo.png";
 import signUpBg from "../assets/Sign-Up.png";
 
@@ -14,41 +14,34 @@ export default function RegisterCard() {
     phone: "+977 ",
     password: "",
   });
-
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const fullName = `${form.firstName} ${form.lastName}`;
-
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (name === "phone") {
-      let digits = value.replace(/\D/g, ""); // allow only numbers
+      let digits = value.replace(/\D/g, "");
 
-      // remove extra 977 if user types it again
       if (digits.startsWith("977")) {
         digits = digits.slice(3);
       }
 
-      // limit to 10 digits
       digits = digits.slice(0, 10);
 
-      setForm({
-        ...form,
-        phone: "+977 " + digits,
-      });
+      setForm((current) => ({
+        ...current,
+        phone: `+977 ${digits}`,
+      }));
       return;
     }
 
-    setForm({ ...form, [name]: value });
+    setForm((current) => ({ ...current, [name]: value }));
   };
 
-  // Prevent deleting +977
   const handlePhoneKeyDown = (e) => {
     if (
       (e.key === "Backspace" || e.key === "Delete") &&
@@ -58,31 +51,42 @@ export default function RegisterCard() {
     }
   };
 
-  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
+    const name = `${form.firstName} ${form.lastName}`.trim();
     const phoneDigits = form.phone.replace("+977", "").trim();
+
+    if (!name) {
+      setError("Enter your name");
+      return;
+    }
 
     if (phoneDigits.length !== 10) {
       setError("Phone must be 10 digits");
       return;
     }
 
+    if (form.password.trim().length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await registerUser({
-        name: fullName,
-        email: form.email,
-        password: form.password,
-        phone: phoneDigits,
+      const response = await requestSignupOtp({
+        email: form.email.trim(),
       });
 
-      navigate("/login", {
+      navigate("/otp", {
         state: {
-          email: form.email,
-          registered: true,
+          source: "signup",
+          email: form.email.trim(),
+          name,
+          password: form.password,
+          message: response.message || "OTP sent to your email",
         },
       });
     } catch (err) {
@@ -160,7 +164,7 @@ export default function RegisterCard() {
 
               <span
                 className="register-password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowPassword((current) => !current)}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </span>
@@ -171,7 +175,7 @@ export default function RegisterCard() {
               disabled={loading}
               className="register-submit-btn"
             >
-              {loading ? "Creating..." : "Create account"}
+              {loading ? "Sending code..." : "Create account"}
             </button>
 
             <div className="register-divider">
