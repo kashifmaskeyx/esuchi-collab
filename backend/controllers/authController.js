@@ -48,7 +48,7 @@ exports.requestSignupOtp = async (req, res) => {
       { upsert: true, new: true },
     );
 
-    await sendPasswordResetOtp(email, otp);n
+    await sendPasswordResetOtp(email, otp);
 
     res.json({ message: "OTP sent to email" });
   } catch (err) {
