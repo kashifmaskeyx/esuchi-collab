@@ -10,7 +10,7 @@ const API = axios.create({
 
 export const registerUser = async (userData) => {
   try {
-    const response = await API.post("/auth/register", userData);
+    const response = await API.post("/auth/signup-otp", userData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Registration failed" };
