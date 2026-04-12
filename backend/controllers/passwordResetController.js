@@ -131,7 +131,7 @@ exports.resetPasswordAfterOtpVerified = async (req, res) => {
       });
     }
 
-    user.password = await bcrypt.hash(password, 10);
+    user.password = password;
     user.passwordResetAllowedUntil = null;
     await user.save();
 
