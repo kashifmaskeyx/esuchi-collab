@@ -15,6 +15,10 @@ const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
 ); // Replace when the component is ready
 
+const InventoryBlankPage = () => (
+  <div style={{ minHeight: "100vh", background: "#ffffff" }} />
+);
+
 function App() {
   return (
     <div>
@@ -27,6 +31,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/inventory" element={<InventoryBlankPage />} />
           <Route path="/orders" element={<BlankPage />} />
           <Route path="/products" element={<Products />} />
           <Route path="/customers" element={<BlankPage />} />
