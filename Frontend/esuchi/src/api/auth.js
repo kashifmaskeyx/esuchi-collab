@@ -16,7 +16,17 @@ const persistAuthToken = (data) => {
 
 export const requestSignupOtp = async (userData) => {
   try {
-    const response = await API.post("/auth/register", userData);
+    const response = await API.post("/auth/signup-otp", userData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to send signup OTP" };
+  }
+};
+
+export const verifySignupOtp = async (data) => {
+  try {
+    const response = await API.post("/auth/verify-signup-otp", data);
+    persistAuthToken(response.data);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Registration failed" };
