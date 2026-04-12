@@ -5,9 +5,7 @@ import {
   Boxes,
   Clock3,
   Search,
-  ShoppingBag,
   SlidersHorizontal,
-  Trophy,
   UserCircle2,
 } from "lucide-react";
 import Sidebar from "./Sidebar";
@@ -22,24 +20,6 @@ const summaryCards = [
 const salesCards = [
   { title: "To be delivered", value: "200" },
   { title: "To be ordered", value: "20" },
-];
-
-const revenueData = [
-  { month: "Jan", value: 19 },
-  { month: "Feb", value: 23 },
-  { month: "Mar", value: 18 },
-  { month: "Apr", value: 20 },
-  { month: "May", value: 18 },
-  { month: "Jun", value: 22.5 },
-  { month: "July", value: 14 },
-  { month: "Aug", value: 19 },
-];
-
-const categoryData = [
-  { name: "Electronics", value: 67 },
-  { name: "Fashion", value: 19 },
-  { name: "Home Supplies", value: 10 },
-  { name: "Health Supplies", value: 4 },
 ];
 
 const recentActivities = [
@@ -162,65 +142,6 @@ export default function Dashboard() {
                     <button type="button">view details</button>
                   </div>
                 </article>
-              ))}
-            </div>
-          </DashboardCard>
-        </section>
-
-        <section className="dashboard-content-grid">
-          <DashboardCard
-            title="Sales Revenue"
-            icon={ShoppingBag}
-            actionText={
-              <div className="chart-tabs">
-                <button type="button" className="active">
-                  Monthly
-                </button>
-                <button type="button">Quarterly</button>
-                <button type="button">Yearly</button>
-              </div>
-            }
-          >
-            <div className="revenue-chart">
-              <div className="revenue-grid-lines">
-                <span>25k</span>
-                <span>20k</span>
-                <span>15k</span>
-                <span>10k</span>
-                <span>0</span>
-              </div>
-
-              <div className="revenue-bars">
-                {revenueData.map((entry) => (
-                  <div key={entry.month} className="revenue-bar-group">
-                    <div className="revenue-bar-track">
-                      <div
-                        className="revenue-bar-fill"
-                        style={{ height: `${(entry.value / 25) * 100}%` }}
-                      />
-                    </div>
-                    <p>{entry.month}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DashboardCard>
-
-          <DashboardCard
-            title="Top Categories"
-            icon={Trophy}
-            actionText="See All"
-          >
-            <div className="category-chart-wrap">
-              <div className="category-donut" />
-            </div>
-
-            <div className="category-list">
-              {categoryData.map((category) => (
-                <div key={category.name} className="category-row">
-                  <span>{category.name}</span>
-                  <strong>{category.value}%</strong>
-                </div>
               ))}
             </div>
           </DashboardCard>
