@@ -196,6 +196,11 @@
   font-size: 13px;
 }
 
+.login-success {
+  color: #15803d;
+  font-size: 13px;
+}
+
 /* ── SIGN UP LINK ── */
 .login-signup-text {
   margin-top: 20px;
