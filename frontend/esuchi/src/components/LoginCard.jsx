@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../css/LoginCard.css";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth.js";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
@@ -12,12 +12,15 @@ export default function LoginCard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const loginMessage = location.state?.passwordResetSuccess;
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       await loginUser(form);
