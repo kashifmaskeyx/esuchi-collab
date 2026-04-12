@@ -45,10 +45,10 @@ exports.requestSignupOtp = async (req, res) => {
         isActive: false,
         isVerified: false,
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
-    await sendPasswordResetOtp(email, otp);
+    await sendPasswordResetOtp(email, otp);n
 
     res.json({ message: "OTP sent to email" });
   } catch (err) {
