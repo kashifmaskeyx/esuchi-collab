@@ -29,7 +29,7 @@ export const verifySignupOtp = async (data) => {
     persistAuthToken(response.data);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Registration failed" };
+    throw error.response?.data || { message: "Signup verification failed" };
   }
 };
 
