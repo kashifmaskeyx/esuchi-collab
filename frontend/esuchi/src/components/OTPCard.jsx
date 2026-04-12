@@ -6,7 +6,7 @@ import { verifyOtp } from "../api/auth";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 export default function OtpCard() {
-  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputsRef = useRef([]);
@@ -44,32 +44,28 @@ export default function OtpCard() {
 
     const code = otp.join("");
 
-  if (code.length !== 6) {
-    alert("Enter full OTP");
-    return;
-  }
+    if (code.length !== 6) {
+      setError("Enter the full OTP");
+      return;
+    }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const res = await verifyResetOtp({
-      email,
-      otp: code,
-    });
-
-    console.log(res);
-
-    // Go to reset password page
-    navigate("/reset-password", { state: { email } });
-
-  } catch (err) {
-    console.error(err);
-    alert(err.message || "Invalid OTP");
-  } finally {
-    setLoading(false);
-  }
-};
-    
+    try {
+      await verifyOtp({ email, otp: code });
+      navigate("/reset-password", {
+        replace: true,
+        state: {
+          resetVerified: true,
+          email,
+        },
+      });
+    } catch (err) {
+      setError(err.message || "OTP verification failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div

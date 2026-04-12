@@ -5,6 +5,7 @@ import RegisterCard from "./components/RegisterCard";
 import OtpCard from "./components/OTPCard";
 import LandingPage from "./components/LandingPage";
 import ForgotPasswordCard from "./components/ForgotPasswordCard";
+import ResetPasswordCard from "./components/ResetPasswordCard";
 import Shipping from "./components/Shipping";
 import Products from "./components/Products";
 import AppShell from "./components/AppShell";
@@ -22,6 +23,7 @@ function App() {
         <Route path="/login" element={<LoginCard />} />
         <Route path="/forgot-password" element={<ForgotPasswordCard />} />
         <Route path="/otp" element={<OtpCard />} />
+        <Route path="/reset-password" element={<ResetPasswordCard />} />
         <Route path="/" element={<LandingPage />} />
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
