@@ -63,12 +63,7 @@ export const resetPassword = async (data) => {
 export const loginUser = async (data) => {
   try {
     const response = await API.post("/auth/login", data);
-
-    // Save token (if backend returns it)
-    if (response.data.token) {
-      localStorage.setItem("token", response.data.token);
-    }
-
+    persistAuthToken(response.data);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Login failed" };
