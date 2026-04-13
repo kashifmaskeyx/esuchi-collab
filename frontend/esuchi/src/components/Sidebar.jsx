@@ -4,16 +4,9 @@ import logo from "../assets/logo.png";
 import logoIn from "../assets/LogoIn.png";
 import {
   LayoutDashboard,
-  ShoppingCart,
   Package,
-  Users,
   Truck,
-  Landmark,
-  BarChart3,
-  Megaphone,
-  BadgePercent,
-  Settings,
-  CircleHelp,
+  Boxes,
   LogOut,
   PanelLeftClose,
   X,
@@ -22,19 +15,9 @@ import "../css/Sidebar.css";
 
 const mainItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { label: "Orders", icon: ShoppingCart, path: "/orders" },
+  { label: "Inventory", icon: Boxes, path: "/inventory" },
   { label: "Products", icon: Package, path: "/products" },
-  { label: "Customers", icon: Users, path: "/customers" },
   { label: "Shipment", icon: Truck, path: "/shipment" },
-  { label: "Finances", icon: Landmark, path: "/finances" },
-  { label: "Analytics", icon: BarChart3, path: "/analytics" },
-  { label: "Marketing", icon: Megaphone, path: "/marketing" },
-  { label: "Discounts", icon: BadgePercent, path: "/discounts" },
-];
-
-const secondaryItems = [
-  { label: "Settings", icon: Settings, path: "/settings" },
-  { label: "Help Center", icon: CircleHelp, path: "/help-center" },
 ];
 
 function Sidebar({ isOpen, onClose, onToggle }) {
@@ -71,26 +54,6 @@ function Sidebar({ isOpen, onClose, onToggle }) {
           <p className="sidebar-group-label">MAIN</p>
           <ul className="sidebar-menu">
             {mainItems.map(({ label, icon: Icon, path }) => (
-              <li key={label}>
-                <NavLink
-                  to={path}
-                  className={({ isActive }) =>
-                    `sidebar-link ${isActive ? "active" : ""}`
-                  }
-                  onClick={handleNavClick}
-                >
-                  <Icon size={17} />
-                  <span>{label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="sidebar-group">
-          <p className="sidebar-group-label">SETTINGS</p>
-          <ul className="sidebar-menu">
-            {secondaryItems.map(({ label, icon: Icon, path }) => (
               <li key={label}>
                 <NavLink
                   to={path}
