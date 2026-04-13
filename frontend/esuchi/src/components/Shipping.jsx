@@ -1,108 +1,299 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   Bell,
-  ChevronDown,
+  CirclePlus,
   PackageCheck,
+  Pencil,
   Search,
   Truck,
   CircleCheckBig,
   Boxes,
+  Trash2,
   TrendingUp,
+  X,
 } from "lucide-react";
+import {
+  createShipment,
+  deleteShipment,
+  getProducts,
+  getShipments,
+  getSuppliers,
+  updateShipmentStatus,
+} from "../api/shipments";
 import "../css/Shipping.css";
 
-const statCards = [
-  {
-    title: "Total Shipments",
-    value: "2,870",
-    note: "8.4% from last month",
-    icon: Boxes,
-    tone: "purple",
-  },
-  {
-    title: "Pending Shipments",
-    value: "340",
-    note: "5% from last month",
-    icon: PackageCheck,
-    tone: "blue",
-  },
-  {
-    title: "In Transit",
-    value: "1,125",
-    note: "10% increase on time delivery",
-    icon: Truck,
-    tone: "amber",
-  },
-  {
-    title: "Delivered",
-    value: "1,405",
-    note: "0.6% from last week",
-    icon: CircleCheckBig,
-    tone: "green",
-  },
-];
+const formatDate = (value) => {
+  if (!value) {
+    return "-";
+  }
 
-const chartPoints = [
-  { label: "Jan 4", orange: 40, green: 10, yellow: 50 },
-  { label: "Jan 8", orange: 60, green: 20, yellow: 42 },
-  { label: "Jan 12", orange: 82, green: 38, yellow: 18 },
-  { label: "Jan 16", orange: 48, green: 74, yellow: 22 },
-  { label: "Jan 20", orange: 30, green: 40, yellow: 58 },
-  { label: "Jan 24", orange: 48, green: 28, yellow: 74 },
-  { label: "Jan 28", orange: 12, green: 38, yellow: 56 },
-  { label: "Jan 31", orange: 76, green: 56, yellow: 16 },
-];
+  const date = new Date(value);
 
-const partners = [
-  { name: "DHL Express", shipments: "1,245", success: "96%", time: "2.1 Days" },
-  { name: "FedEx", shipments: "980", success: "94%", time: "2.3 Days" },
-  { name: "UPS", shipments: "645", success: "91%", time: "2.8 Days" },
-  { name: "Aramex", shipments: "312", success: "91%", time: "2.8 Days" },
-  { name: "Blue Dart", shipments: "278", success: "91%", time: "2.8 Days" },
-];
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
 
-const shipments = [
-  {
-    id: "TXN-982341",
-    orderId: "ORD-45821",
-    customer: "Sarah Lee",
-    address: "New York, USA",
-    courier: "DHL",
-    status: "Delivered",
-    date: "Jan 16, 2026",
-  },
-  {
-    id: "TXN-982342",
-    orderId: "ORD-45822",
-    customer: "Kabir Singh",
-    address: "Kathmandu, Nepal",
-    courier: "FedEx",
-    status: "In Transit",
-    date: "Jan 18, 2026",
-  },
-  {
-    id: "TXN-982343",
-    orderId: "ORD-45823",
-    customer: "Mina Roy",
-    address: "Delhi, India",
-    courier: "UPS",
-    status: "Pending",
-    date: "Jan 19, 2026",
-  },
-];
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
+const formatStatusLabel = (status) => {
+  if (!status) {
+    return "Unknown";
+  }
+
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
 
 export default function Shipping() {
   const { sidebarOpen } = useOutletContext();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [shipments, setShipments] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    supplier: "",
+    product: "",
+    quantity: "1",
+    expectedDeliveryDate: "",
+    notes: "",
+  });
+  const [editStatus, setEditStatus] = useState("pending");
 
-  const buildAreaPath = (key) =>
-    chartPoints
-      .map((point, index) => {
-        const x = index * 84 + 16;
-        const y = 220 - point[key] * 2.1;
-        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-      })
-      .join(" ");
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadShippingData = async () => {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const [shipmentsResponse, suppliersResponse, productsResponse] =
+          await Promise.all([getShipments(), getSuppliers(), getProducts()]);
+
+        if (isMounted) {
+          setShipments(shipmentsResponse.data ?? []);
+          setSuppliers(suppliersResponse.data ?? []);
+          setProducts(Array.isArray(productsResponse) ? productsResponse : []);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(
+            error.response?.data?.message ||
+              error.message ||
+              "Unable to load shipments from the backend.",
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadShippingData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const refreshShipments = async () => {
+    const response = await getShipments();
+    setShipments(response.data ?? []);
+  };
+
+  const filteredShipments = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return shipments;
+    }
+
+    return shipments.filter((shipment) => {
+      const productNames = (shipment.products ?? [])
+        .map((item) => item.product?.name)
+        .filter(Boolean)
+        .join(" ");
+
+      const haystack = [
+        shipment.shipmentId,
+        shipment.supplier,
+        shipment.status,
+        shipment.notes,
+        shipment.createdBy?.name,
+        productNames,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [searchTerm, shipments]);
+
+  const statCards = useMemo(
+    () => [
+      {
+        title: "Total Shipments",
+        value: shipments.length,
+        note: "Backend shipment records",
+        icon: Boxes,
+        tone: "purple",
+      },
+      {
+        title: "Pending Shipments",
+        value: shipments.filter((shipment) => shipment.status === "pending").length,
+        note: "Awaiting shipment progress",
+        icon: PackageCheck,
+        tone: "blue",
+      },
+      {
+        title: "In Transit",
+        value: shipments.filter((shipment) => shipment.status === "in_transit").length,
+        note: "Currently on the way",
+        icon: Truck,
+        tone: "amber",
+      },
+      {
+        title: "Delivered",
+        value: shipments.filter((shipment) => shipment.status === "delivered").length,
+        note: "Completed shipment records",
+        icon: CircleCheckBig,
+        tone: "green",
+      },
+    ],
+    [shipments],
+  );
+
+  const handleCreateFormChange = (event) => {
+    const { name, value } = event.target;
+    setCreateForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const openEditModal = (shipment) => {
+    setSelectedShipment(shipment);
+    setEditStatus(shipment.status || "pending");
+    setSubmitError("");
+    setIsEditModalOpen(true);
+  };
+
+  const closeModals = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsCreateModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedShipment(null);
+    setEditStatus("pending");
+    setSubmitError("");
+    setCreateForm({
+      supplier: "",
+      product: "",
+      quantity: "1",
+      expectedDeliveryDate: "",
+      notes: "",
+    });
+  };
+
+  const handleCreateShipment = async (event) => {
+    event.preventDefault();
+    setSubmitError("");
+
+    if (!createForm.supplier || !createForm.product || !createForm.expectedDeliveryDate) {
+      setSubmitError("Supplier, product, and expected delivery date are required.");
+      return;
+    }
+
+    const quantity = Number(createForm.quantity);
+
+    if (Number.isNaN(quantity) || quantity < 1) {
+      setSubmitError("Quantity must be at least 1.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createShipment({
+        supplier: createForm.supplier,
+        products: [{ product: createForm.product, quantity }],
+        expectedDeliveryDate: createForm.expectedDeliveryDate,
+        notes: createForm.notes.trim(),
+      });
+
+      await refreshShipments();
+      closeModals();
+    } catch (error) {
+      setSubmitError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to create shipment.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateStatus = async (event) => {
+    event.preventDefault();
+    setSubmitError("");
+
+    if (!selectedShipment?._id) {
+      setSubmitError("No shipment selected.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await updateShipmentStatus(selectedShipment._id, editStatus);
+      await refreshShipments();
+      closeModals();
+    } catch (error) {
+      setSubmitError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to update shipment status.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteShipment = async (shipment) => {
+    const confirmed = window.confirm(`Delete shipment ${shipment.shipmentId || ""}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteShipment(shipment._id);
+      await refreshShipments();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to delete shipment.",
+      );
+    }
+  };
 
   return (
     <div className="shipping-page">
@@ -121,11 +312,6 @@ export default function Shipping() {
               <Bell size={18} />
             </button>
 
-            <div className="shipping-search">
-              <Search size={18} />
-              <input type="text" placeholder="Search anything" />
-            </div>
-
             <button type="button" className="shipping-profile">
               <div className="shipping-profile-avatar">A</div>
             </button>
@@ -133,8 +319,18 @@ export default function Shipping() {
         </header>
 
         <section className="shipping-hero">
-          <h2>Shipping Management</h2>
-          <p>Track, manage, and update your product deliveries.</p>
+          <div>
+            <h2>Shipping Management</h2>
+            <p>Track, manage, and update your product deliveries.</p>
+          </div>
+          <button
+            type="button"
+            className="shipping-create-btn"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <CirclePlus size={16} />
+            Create Shipment
+          </button>
         </section>
 
         <section className="shipping-stats-grid">
@@ -162,99 +358,6 @@ export default function Shipping() {
           })}
         </section>
 
-        <section className="shipping-dashboard-grid">
-          <article className="shipping-panel shipping-chart-panel">
-            <div className="shipping-panel-head">
-              <div>
-                <h3>Delivery Performance</h3>
-                <p>Delivery performance over last 30 days</p>
-              </div>
-
-              <button type="button" className="shipping-filter-btn">
-                Monthly
-                <ChevronDown size={16} />
-              </button>
-            </div>
-
-            <div className="shipping-chart-wrap">
-              <svg viewBox="0 0 620 250" className="shipping-chart" aria-hidden="true">
-                {[0, 1, 2, 3, 4].map((line) => (
-                  <line
-                    key={line}
-                    x1="0"
-                    y1={30 + line * 45}
-                    x2="620"
-                    y2={30 + line * 45}
-                    className="shipping-grid-line"
-                  />
-                ))}
-
-                <path d={buildAreaPath("orange")} className="shipping-line orange" />
-                <path d={buildAreaPath("green")} className="shipping-line green" />
-                <path d={buildAreaPath("yellow")} className="shipping-line yellow" />
-
-                {chartPoints.map((point, index) => (
-                  <g key={point.label}>
-                    <circle cx={index * 84 + 16} cy={220 - point.orange * 2.1} r="4" className="shipping-point orange" />
-                    <circle cx={index * 84 + 16} cy={220 - point.green * 2.1} r="4" className="shipping-point green" />
-                    <circle cx={index * 84 + 16} cy={220 - point.yellow * 2.1} r="4" className="shipping-point yellow" />
-                  </g>
-                ))}
-              </svg>
-
-              <div className="shipping-chart-labels">
-                {chartPoints.map((point) => (
-                  <span key={point.label}>{point.label}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="shipping-chart-summary">
-              <div>
-                <p>Avg Delivery Time</p>
-                <strong>2.4 Days</strong>
-              </div>
-              <div>
-                <p>On-Time Delivery Rate</p>
-                <strong>92.6%</strong>
-              </div>
-              <div>
-                <p>Late Deliveries</p>
-                <strong>7.4%</strong>
-              </div>
-            </div>
-          </article>
-
-          <article className="shipping-panel shipping-partners-panel">
-            <div className="shipping-panel-head shipping-partners-head">
-              <div>
-                <h3>Shipping Partners</h3>
-              </div>
-            </div>
-
-            <div className="shipping-partner-table">
-              <div className="shipping-partner-head shipping-partner-row">
-                <span>Partner</span>
-                <span>Shipments</span>
-                <span>Success Rate</span>
-                <span>Avg Delivery Time</span>
-              </div>
-
-              {partners.map((partner) => (
-                <div key={partner.name} className="shipping-partner-row">
-                  <span className="shipping-partner-name">
-                    <span className="shipping-partner-dot" />
-                    {partner.name}
-                  </span>
-                  <span>{partner.shipments}</span>
-                  <span>{partner.success}</span>
-                  <span>{partner.time}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
-
         <section className="shipping-panel shipping-table-panel">
           <div className="shipping-panel-head">
             <div>
@@ -265,12 +368,13 @@ export default function Shipping() {
             <div className="shipping-table-tools">
               <div className="shipping-search shipping-table-search">
                 <Search size={16} />
-                <input type="text" placeholder="Search" />
+                <input
+                  type="text"
+                  placeholder="Search shipments"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
               </div>
-              <button type="button" className="shipping-filter-btn">
-                Date Range
-                <ChevronDown size={16} />
-              </button>
             </div>
           </div>
 
@@ -278,39 +382,227 @@ export default function Shipping() {
             <table className="shipping-table">
               <thead>
                 <tr>
-                  <th>Transaction ID</th>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Address</th>
-                  <th>Courier</th>
+                  <th>Shipment ID</th>
+                  <th>Products</th>
+                  <th>Total Qty</th>
                   <th>Status</th>
                   <th>Expected Delivery</th>
+                  <th>Created By</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {shipments.map((shipment) => (
-                  <tr key={shipment.id}>
-                    <td>{shipment.id}</td>
-                    <td>{shipment.orderId}</td>
-                    <td>{shipment.customer}</td>
-                    <td>{shipment.address}</td>
-                    <td>{shipment.courier}</td>
-                    <td>
-                      <span
-                        className={`shipping-status ${shipment.status
-                          .toLowerCase()
-                          .replace(/\s+/g, "-")}`}
-                      >
-                        {shipment.status}
-                      </span>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="8" className="shipping-table-state">
+                      Loading shipments from the backend...
                     </td>
-                    <td>{shipment.date}</td>
                   </tr>
-                ))}
+                ) : errorMessage ? (
+                  <tr>
+                    <td colSpan="8" className="shipping-table-state error">
+                      {errorMessage}
+                    </td>
+                  </tr>
+                ) : filteredShipments.length ? (
+                  filteredShipments.map((shipment) => {
+                    const totalQuantity = (shipment.products ?? []).reduce(
+                      (sum, item) => sum + (Number(item.quantity) || 0),
+                      0,
+                    );
+                    const productSummary = (shipment.products ?? [])
+                      .map((item) =>
+                        item.product?.name
+                          ? `${item.product.name} (${item.quantity})`
+                          : `Unknown product (${item.quantity})`,
+                      )
+                      .join(", ");
+
+                    return (
+                      <tr key={shipment._id}>
+                        <td>{shipment.shipmentId || "-"}</td>
+                        <td>{productSummary || "-"}</td>
+                        <td>{totalQuantity}</td>
+                        <td>
+                          <span
+                            className={`shipping-status ${String(shipment.status)
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")}`}
+                          >
+                            {formatStatusLabel(shipment.status)}
+                          </span>
+                        </td>
+                        <td>{formatDate(shipment.expectedDeliveryDate)}</td>
+                        <td>{shipment.createdBy?.name || "-"}</td>
+                        <td>{shipment.notes || "-"}</td>
+                        <td>
+                          <div className="shipping-row-actions">
+                            {["pending", "in_transit"].includes(shipment.status) ? (
+                              <button
+                                type="button"
+                                className="shipping-row-btn edit"
+                                onClick={() => openEditModal(shipment)}
+                              >
+                                <Pencil size={14} />
+                                Edit
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="shipping-row-btn delete"
+                              onClick={() => handleDeleteShipment(shipment)}
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="shipping-table-state">
+                      No shipments match the current search.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </section>
+
+        {isCreateModalOpen ? (
+          <div className="shipping-modal-backdrop" onClick={closeModals}>
+            <div className="shipping-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="shipping-modal-head">
+                <div>
+                  <h2>Create Shipment</h2>
+                  <p>Add a shipment record using backend supplier and product entities.</p>
+                </div>
+                <button type="button" className="shipping-modal-close" onClick={closeModals}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form className="shipping-form" onSubmit={handleCreateShipment}>
+                <label>
+                  <span>Supplier</span>
+                  <select
+                    name="supplier"
+                    value={createForm.supplier}
+                    onChange={handleCreateFormChange}
+                  >
+                    <option value="">Select supplier</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier._id} value={supplier._id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Product</span>
+                  <select
+                    name="product"
+                    value={createForm.product}
+                    onChange={handleCreateFormChange}
+                  >
+                    <option value="">Select product</option>
+                    {products.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Quantity</span>
+                  <input
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    value={createForm.quantity}
+                    onChange={handleCreateFormChange}
+                  />
+                </label>
+
+                <label>
+                  <span>Expected Delivery Date</span>
+                  <input
+                    name="expectedDeliveryDate"
+                    type="date"
+                    value={createForm.expectedDeliveryDate}
+                    onChange={handleCreateFormChange}
+                  />
+                </label>
+
+                <label className="shipping-form-full">
+                  <span>Notes</span>
+                  <textarea
+                    name="notes"
+                    rows="3"
+                    value={createForm.notes}
+                    onChange={handleCreateFormChange}
+                  />
+                </label>
+
+                {submitError ? <p className="shipping-form-error">{submitError}</p> : null}
+
+                <div className="shipping-form-actions">
+                  <button type="button" className="shipping-form-secondary" onClick={closeModals}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="shipping-create-btn" disabled={isSubmitting}>
+                    {isSubmitting ? "Creating..." : "Create Shipment"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {isEditModalOpen ? (
+          <div className="shipping-modal-backdrop" onClick={closeModals}>
+            <div className="shipping-modal shipping-modal-small" onClick={(event) => event.stopPropagation()}>
+              <div className="shipping-modal-head">
+                <div>
+                  <h2>Edit Shipment Status</h2>
+                  <p>Update the status for pending or in-transit shipments.</p>
+                </div>
+                <button type="button" className="shipping-modal-close" onClick={closeModals}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form className="shipping-form" onSubmit={handleUpdateStatus}>
+                <label className="shipping-form-full">
+                  <span>Status</span>
+                  <select value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
+                    <option value="pending">Pending</option>
+                    <option value="in_transit">In Transit</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+
+                {submitError ? <p className="shipping-form-error">{submitError}</p> : null}
+
+                <div className="shipping-form-actions">
+                  <button type="button" className="shipping-form-secondary" onClick={closeModals}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="shipping-create-btn" disabled={isSubmitting}>
+                    {isSubmitting ? "Saving..." : "Save Status"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );

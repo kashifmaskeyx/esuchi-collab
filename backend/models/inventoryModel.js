@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { randomUUID } = require("crypto");
 
 const inventorySchema = new mongoose.Schema(
   {
@@ -36,11 +37,13 @@ const inventorySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Auto-generate inventoryId
+const generateInventoryId = () =>
+  `INV-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+
+// Auto-generate inventoryId (safe for concurrent inserts/deletes)
 inventorySchema.pre("save", async function () {
   if (!this.inventoryId) {
-    const count = await this.constructor.countDocuments();
-    this.inventoryId = `INV-${String(count + 1).padStart(4, "0")}`;
+    this.inventoryId = generateInventoryId();
   }
 });
 

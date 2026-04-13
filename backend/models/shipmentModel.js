@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { randomUUID } = require("crypto");
 
 const shipmentSchema = new mongoose.Schema(
   {
@@ -33,11 +34,13 @@ const shipmentSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Auto-generate shipmentId
+const generateShipmentId = () =>
+  `SHP-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+
+// Auto-generate shipmentId (safe for concurrent inserts/deletes)
 shipmentSchema.pre("save", async function () {
   if (!this.shipmentId) {
-    const count = await this.constructor.countDocuments();
-    this.shipmentId = `SHP-${String(count + 1).padStart(4, "0")}`;
+    this.shipmentId = generateShipmentId();
   }
 });
 
