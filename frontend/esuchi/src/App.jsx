@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 
 import LoginCard from "./components/LoginCard";
 import RegisterCard from "./components/RegisterCard";
@@ -19,31 +19,39 @@ const InventoryBlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
 );
 
+const ProtectedRoute = () => {
+  const token = localStorage.getItem("token");
+  return token ? <Outlet /> : <Navigate to="/login" replace />;
+};
+
 function App() {
   return (
     <div>
       <Routes>
-        <Route path="/register" element={<RegisterCard />} />
-        <Route path="/login" element={<LoginCard />} />
-        <Route path="/forgot-password" element={<ForgotPasswordCard />} />
-        <Route path="/otp" element={<OtpCard />} />
-        <Route path="/reset-password" element={<ResetPasswordCard />} />
-        <Route path="/" element={<LandingPage />} />
-        <Route element={<AppShell />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/inventory" element={<InventoryBlankPage />} />
-          <Route path="/orders" element={<BlankPage />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/customers" element={<BlankPage />} />
-          <Route path="/shipment" element={<Shipping />} />
-          <Route path="/finances" element={<BlankPage />} />
-          <Route path="/analytics" element={<BlankPage />} />
-          <Route path="/marketing" element={<BlankPage />} />
-          <Route path="/discounts" element={<BlankPage />} />
-          <Route path="/settings" element={<BlankPage />} />
-          <Route path="/help-center" element={<BlankPage />} />
-        </Route>
-      </Routes>
+  <Route path="/register" element={<RegisterCard />} />
+  <Route path="/login" element={<LoginCard />} />
+  <Route path="/forgot-password" element={<ForgotPasswordCard />} />
+  <Route path="/otp" element={<OtpCard />} />
+  <Route path="/reset-password" element={<ResetPasswordCard />} />
+  <Route path="/" element={<LandingPage />} />
+
+  <Route element={<ProtectedRoute />}>
+    <Route element={<AppShell />}>
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/inventory" element={<InventoryBlankPage />} />
+      <Route path="/orders" element={<BlankPage />} />
+      <Route path="/products" element={<Products />} />
+      <Route path="/customers" element={<BlankPage />} />
+      <Route path="/shipment" element={<Shipping />} />
+      <Route path="/finances" element={<BlankPage />} />
+      <Route path="/analytics" element={<BlankPage />} />
+      <Route path="/marketing" element={<BlankPage />} />
+      <Route path="/discounts" element={<BlankPage />} />
+      <Route path="/settings" element={<BlankPage />} />
+      <Route path="/help-center" element={<BlankPage />} />
+    </Route>
+  </Route>
+</Routes>
     </div>
   );
 }
