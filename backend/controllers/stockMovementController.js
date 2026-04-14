@@ -1,12 +1,14 @@
 const StockMovement = require("../models/stockMovementModel");
 const Inventory = require("../models/inventoryModel");
+const Product = require("../models/productModel");
 
 //
 // CREATE stock movement
 //
 exports.createMovement = async (req, res) => {
   try {
-    const { product, movementType, quantity } = req.body;
+    const { product, movementType, quantity, movementDate, confirmLowStock } =
+      req.body;
 
     const inventory = await Inventory.findOne({ product });
 
@@ -14,27 +16,70 @@ exports.createMovement = async (req, res) => {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
-    // Update inventory based on movement type
-    if (movementType === "IN") {
-      inventory.currentStock += quantity;
-    } else if (movementType === "OUT") {
-      if (inventory.currentStock < quantity) {
-        return res.status(400).json({ message: "Insufficient stock" });
-      }
-      inventory.currentStock -= quantity;
-    } else if (movementType === "ADJUSTMENT") {
-      inventory.currentStock = quantity;
+    const numericQuantity = Number(quantity);
+
+    if (!Number.isFinite(numericQuantity) || numericQuantity < 1) {
+      return res
+        .status(400)
+        .json({ message: "Quantity must be a number greater than 0" });
     }
 
+    const productRecord = await Product.findById(product);
+
+    if (!productRecord) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const parsedMovementDate = movementDate ? new Date(movementDate) : new Date();
+
+    if (Number.isNaN(parsedMovementDate.getTime())) {
+      return res.status(400).json({ message: "Invalid movement date" });
+    }
+
+    let updatedStock = inventory.currentStock;
+
+    // Update inventory based on movement type
+    if (movementType === "IN") {
+      updatedStock += numericQuantity;
+    } else if (movementType === "OUT") {
+      if (inventory.currentStock < numericQuantity) {
+        return res.status(400).json({ message: "Insufficient stock" });
+      }
+      updatedStock -= numericQuantity;
+
+      if (updatedStock < inventory.minimumStock && !confirmLowStock) {
+        return res.status(409).json({
+          warning: true,
+          message:
+            "This stock out will reduce stock below the minimum level. Confirm to continue.",
+          data: {
+            product: productRecord.name,
+            currentStock: inventory.currentStock,
+            projectedStock: updatedStock,
+            minimumStock: inventory.minimumStock,
+          },
+        });
+      }
+    } else if (movementType === "ADJUSTMENT") {
+      updatedStock = numericQuantity;
+    } else {
+      return res.status(400).json({ message: "Invalid movement type" });
+    }
+
+    inventory.currentStock = updatedStock;
     inventory.lastUpdated = Date.now();
     await inventory.save();
+
+    productRecord.quantity = updatedStock;
+    await productRecord.save();
 
     // Save movement record
     const movement = await StockMovement.create({
       product,
       user: req.user._id, // from auth middleware
       movementType,
-      quantity,
+      quantity: numericQuantity,
+      movementDate: parsedMovementDate,
     });
 
     res.status(201).json({
