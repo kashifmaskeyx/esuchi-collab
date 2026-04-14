@@ -8,16 +8,13 @@ import ForgotPasswordCard from "./components/ForgotPasswordCard";
 import ResetPasswordCard from "./components/ResetPasswordCard";
 import Shipping from "./components/Shipping";
 import Products from "./components/Products";
+import Inventory from "./components/Inventory";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 
 const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
 ); // Replace when the component is ready
-
-const InventoryBlankPage = () => (
-  <div style={{ minHeight: "100vh", background: "#ffffff" }} />
-);
 
 const ProtectedRoute = () => {
   const token = localStorage.getItem("token");
@@ -36,9 +33,9 @@ function App() {
   <Route path="/" element={<LandingPage />} />
 
   <Route element={<ProtectedRoute />}>
-    <Route element={<AppShell />}>
+      <Route element={<AppShell />}>
       <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/inventory" element={<InventoryBlankPage />} />
+      <Route path="/inventory" element={<Inventory />} />
       <Route path="/orders" element={<BlankPage />} />
       <Route path="/products" element={<Products />} />
       <Route path="/customers" element={<BlankPage />} />
