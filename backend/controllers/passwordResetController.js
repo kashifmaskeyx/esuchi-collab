@@ -3,9 +3,6 @@ const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
 const { sendPasswordResetOtp } = require("../config/mail");
 
-const FORGOT_PASSWORD_GENERIC =
-  "If an account exists for this email, a reset code was sent.";
-
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const PASSWORD_RESET_WINDOW_MS = 15 * 60 * 1000;
 
@@ -20,7 +17,15 @@ exports.requestPasswordResetOtp = async (req, res) => {
 
     const user = await User.findOne({ email: email.trim() });
     if (!user) {
-      return res.json({ message: FORGOT_PASSWORD_GENERIC });
+      return res.status(404).json({
+        message: "No account found with this email.",
+      });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "This account is not verified yet.",
+      });
     }
 
     const otpPlain = String(crypto.randomInt(100000, 1000000));
@@ -43,7 +48,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
       });
     }
 
-    res.json({ message: FORGOT_PASSWORD_GENERIC });
+    res.json({ message: "Password reset OTP sent to your email." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

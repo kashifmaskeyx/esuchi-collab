@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { randomUUID } = require("crypto");
 
 const stockMovementSchema = new mongoose.Schema(
   {
@@ -39,11 +40,13 @@ const stockMovementSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate movementId
+const generateMovementId = () =>
+  `MOV-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+
+// Auto-generate movementId (safe for concurrent inserts/deletes)
 stockMovementSchema.pre("save", async function () {
   if (!this.movementId) {
-    const count = await this.constructor.countDocuments();
-    this.movementId = `MOV-${String(count + 1).padStart(4, "0")}`;
+    this.movementId = generateMovementId();
   }
 });
 
