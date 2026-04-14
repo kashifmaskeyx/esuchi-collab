@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import LoginCard from "./components/LoginCard";
 import RegisterCard from "./components/RegisterCard";
 import OtpCard from "./components/OTPCard";
-import LandingPage from "./components/LandingPage";
+import LandingPage from "./components/LandingPageV2";
 import ForgotPasswordCard from "./components/ForgotPasswordCard";
 import ResetPasswordCard from "./components/ResetPasswordCard";
 import Shipping from "./components/Shipping";
