@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,6 +12,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
 import "../css/Inventory.css";
 
@@ -62,6 +63,8 @@ const getMovementBadgeClass = (movementType) => {
 
 export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [pageData, setPageData] = useState({
     products: [],
     inventory: [],
@@ -365,9 +368,14 @@ export default function Inventory() {
               <Bell size={18} />
             </button>
 
-            <div className="inventory-avatar" aria-label="User profile">
-              <span>A</span>
-            </div>
+            <button
+              type="button"
+              className="inventory-avatar"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <span>{userInitials}</span>
+            </button>
           </div>
         </header>
 

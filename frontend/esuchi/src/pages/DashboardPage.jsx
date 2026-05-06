@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
   Clock3,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import DashboardCard from "../components/DashboardCard";
 import { getDashboardData } from "../api/dashboard";
+import { getUserInitials } from "../api/auth";
 import "../css/Dashboard.css";
 
 const formatCurrency = (value) => {
@@ -65,6 +66,8 @@ const getMovementTone = (movementType) => {
 
 export default function DashboardPage() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [dashboardData, setDashboardData] = useState({
     products: [],
@@ -239,9 +242,14 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="avatar-chip" aria-label="User profile">
-              <span>A</span>
-            </div>
+            <button
+              type="button"
+              className="avatar-chip"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <span>{userInitials}</span>
+            </button>
           </div>
         </header>
 

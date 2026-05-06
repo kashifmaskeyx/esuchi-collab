@@ -11,6 +11,7 @@ import {
   PanelLeftClose,
   X,
 } from "lucide-react";
+import { logoutUser } from "../api/auth";
 import "../css/Sidebar.css";
 
 const mainItems = [
@@ -74,7 +75,10 @@ function Sidebar({ isOpen, onClose, onToggle }) {
       <button
         type="button"
         className="sidebar-logout-btn"
-        onClick={() => navigate("/login")}
+        onClick={() => {
+          logoutUser();
+          navigate("/login");
+        }}
       >
         <LogOut size={17} />
         <span>Logout</span>

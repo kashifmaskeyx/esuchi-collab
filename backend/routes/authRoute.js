@@ -5,6 +5,8 @@ const { body } = require("express-validator");
 const {
   login,
   getMe,
+  updateMe,
+  changePassword,
   logout,
   requestSignupOtp,
   verifySignupOtp,
@@ -54,6 +56,22 @@ router.post(
 // ================= AUTH USER =================
 //
 router.get("/me", protect, getMe);
+router.put(
+  "/me",
+  protect,
+  [body("name").notEmpty(), body("email").isEmail()],
+  updateMe,
+);
+router.put(
+  "/password",
+  protect,
+  [
+    body("currentPassword").notEmpty(),
+    body("newPassword").isLength({ min: 6 }),
+    body("confirmPassword").notEmpty(),
+  ],
+  changePassword,
+);
 router.post("/logout", protect, logout);
 
 //
