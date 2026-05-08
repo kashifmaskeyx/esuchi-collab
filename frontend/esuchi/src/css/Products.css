@@ -57,11 +57,14 @@
   height: 40px;
   border-radius: 999px;
   background: #efefef;
+  border: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #111111;
   flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
 }
 
 .products-avatar span {

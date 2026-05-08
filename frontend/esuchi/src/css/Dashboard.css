@@ -103,6 +103,8 @@
   justify-content: center;
   color: #111111;
   flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
 }
 
 .avatar-chip span {

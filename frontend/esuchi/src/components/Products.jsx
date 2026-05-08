@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -9,6 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { getUserInitials } from "../api/auth";
 import {
   createInventory,
   createProduct,
@@ -41,6 +42,8 @@ const emptyForm = {
 
 export default function Products() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [listingData, setListingData] = useState({ products: [], inventory: [] });
@@ -299,9 +302,14 @@ export default function Products() {
               <Bell size={18} />
             </button>
 
-            <div className="products-avatar" aria-label="User profile">
-              <span>A</span>
-            </div>
+            <button
+              type="button"
+              className="products-avatar"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <span>{userInitials}</span>
+            </button>
           </div>
         </header>
 

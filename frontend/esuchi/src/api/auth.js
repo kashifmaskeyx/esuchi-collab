@@ -8,9 +8,54 @@ const API = axios.create({
   },
 });
 
+const getAuthConfig = () => {
+  const token = localStorage.getItem("token");
+
+  return token
+    ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    : {};
+};
+
 const persistAuthToken = (data) => {
   if (data?.token) {
     localStorage.setItem("token", data.token);
+  }
+
+  if (data?.user) {
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
+  }
+};
+
+export const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("currentUser")) || null;
+  } catch {
+    return null;
+  }
+};
+
+export const getUserInitials = (user = getStoredUser()) => {
+  const displayValue = user?.name?.trim() || user?.email?.split("@")[0] || "A";
+  const parts = displayValue.split(/\s+/).filter(Boolean);
+
+  if (parts.length > 1) {
+    return parts
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  return displayValue.slice(0, 2).toUpperCase();
+};
+
+const persistUser = (user) => {
+  if (user) {
+    localStorage.setItem("currentUser", JSON.stringify(user));
   }
 };
 
@@ -70,6 +115,27 @@ export const loginUser = async (data) => {
   }
 };
 
+export const updateCurrentUser = async (data) => {
+  try {
+    const response = await API.put("/auth/me", data, getAuthConfig());
+    persistUser(response.data?.user);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Profile update failed" };
+  }
+};
+
+export const changeCurrentPassword = async (data) => {
+  try {
+    const response = await API.put("/auth/password", data, getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Password change failed" };
+  }
+};
+
 export const logoutUser = () => {
   localStorage.removeItem("token");
+  localStorage.removeItem("currentUser");
+  localStorage.removeItem("esuchiProfile");
 };

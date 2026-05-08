@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
   CirclePlus,
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { getUserInitials } from "../api/auth";
 import {
   createShipment,
   deleteShipment,
@@ -54,6 +55,8 @@ const formatStatusLabel = (status) => {
 
 export default function Shipping() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [shipments, setShipments] = useState([]);
   const [products, setProducts] = useState([]);
@@ -312,8 +315,13 @@ export default function Shipping() {
               <Bell size={18} />
             </button>
 
-            <button type="button" className="shipping-profile">
-              <div className="shipping-profile-avatar">A</div>
+            <button
+              type="button"
+              className="shipping-profile"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <div className="shipping-profile-avatar">{userInitials}</div>
             </button>
           </div>
         </header>
