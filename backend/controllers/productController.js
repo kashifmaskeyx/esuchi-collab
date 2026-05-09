@@ -10,6 +10,48 @@ exports.createProduct = async (req, res) => {
   }
 };
 
+exports.bulkCreateProducts = async (req, res) => {
+  try {
+    const products = req.body.products;
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Products array is required",
+      });
+    }
+
+    // Optional validation
+    const formattedProducts = products.map((p, index) => {
+      if (!p.name || !p.price) {
+        throw new Error(`Invalid product at index ${index}`);
+      }
+
+      return {
+        name: p.name,
+        quantity: p.quantity ?? 0,
+        price: p.price,
+        category: p.category || null,
+        supplier: p.supplier || null,
+        description: p.description || null,
+      };
+    });
+
+    const createdProducts = await Product.insertMany(formattedProducts);
+
+    res.status(201).json({
+      success: true,
+      count: createdProducts.length,
+      data: createdProducts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Get all products with pagination
 exports.getProducts = async (req, res) => {
   try {
