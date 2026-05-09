@@ -125,6 +125,15 @@ export const updateCurrentUser = async (data) => {
   }
 };
 
+export const requestEmailChangeOtp = async (data) => {
+  try {
+    const response = await API.post("/auth/me/email-otp", data, getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to send email OTP" };
+  }
+};
+
 export const changeCurrentPassword = async (data) => {
   try {
     const response = await API.put("/auth/password", data, getAuthConfig());
