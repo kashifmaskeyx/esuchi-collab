@@ -16,7 +16,7 @@ function getTransporter() {
   });
 }
 
-async function sendPasswordResetOtp(email, otp) {
+async function sendOtpEmail(email, otp, purpose = "verification") {
   const transporter = getTransporter();
   if (!transporter) {
     throw new Error("Email service is not configured");
@@ -26,8 +26,13 @@ async function sendPasswordResetOtp(email, otp) {
     from,
     to: email,
     subject: "Esuchi — OTP code",
-    text: `Your password reset code is: ${otp}. It expires in 10 minutes.`,
-    html: `<p>Your password reset code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`,
+    text: `Your ${purpose} code is: ${otp}. It expires in 10 minutes.`,
+    html: `<p>Your ${purpose} code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`,
   });
 }
-module.exports = { getTransporter, sendPasswordResetOtp };
+
+async function sendPasswordResetOtp(email, otp) {
+  return sendOtpEmail(email, otp, "password reset");
+}
+
+module.exports = { getTransporter, sendOtpEmail, sendPasswordResetOtp };

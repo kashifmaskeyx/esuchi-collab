@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
 import {
   changeCurrentPassword,
   getStoredUser,
+  requestEmailChangeOtp,
   updateCurrentUser,
 } from "../api/auth";
 import "../css/ProfilePage.css";
@@ -30,6 +31,7 @@ const storedProfile = () => {
 };
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const outletContext = useOutletContext();
   const sidebarOpen = outletContext?.sidebarOpen ?? false;
   const profile = useMemo(() => storedProfile(), []);
@@ -46,11 +48,15 @@ export default function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [emailOtp, setEmailOtp] = useState("");
   const [accountStatus, setAccountStatus] = useState("");
   const [accountError, setAccountError] = useState("");
+  const [emailOtpStatus, setEmailOtpStatus] = useState("");
+  const [emailOtpError, setEmailOtpError] = useState("");
   const [passwordStatus, setPasswordStatus] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const initials = savedProfile.name
@@ -60,12 +66,21 @@ export default function ProfilePage() {
     .join("")
     .slice(0, 2)
     .toUpperCase() || "A";
+  const emailChanged =
+    accountForm.email.trim().toLowerCase() !==
+    savedProfile.email.trim().toLowerCase();
 
   const handleAccountChange = (event) => {
     const { name, value } = event.target;
     setAccountForm((current) => ({ ...current, [name]: value }));
     setAccountStatus("");
     setAccountError("");
+
+    if (name === "email") {
+      setEmailOtp("");
+      setEmailOtpStatus("");
+      setEmailOtpError("");
+    }
   };
 
   const handlePasswordChange = (event) => {
@@ -73,6 +88,30 @@ export default function ProfilePage() {
     setPasswordForm((current) => ({ ...current, [name]: value }));
     setPasswordStatus("");
     setPasswordError("");
+  };
+
+  const handleSendEmailOtp = async () => {
+    const email = accountForm.email.trim();
+    setAccountStatus("");
+    setAccountError("");
+    setEmailOtpStatus("");
+    setEmailOtpError("");
+
+    if (!email) {
+      setEmailOtpError("Enter your new email before requesting an OTP.");
+      return;
+    }
+
+    setIsSendingEmailOtp(true);
+
+    try {
+      const response = await requestEmailChangeOtp({ email });
+      setEmailOtpStatus(response.message || "OTP sent to your new email.");
+    } catch (error) {
+      setEmailOtpError(error.message || "Unable to send OTP.");
+    } finally {
+      setIsSendingEmailOtp(false);
+    }
   };
 
   const handleAccountSubmit = async (event) => {
@@ -87,12 +126,20 @@ export default function ProfilePage() {
       return;
     }
 
+    if (emailChanged && !emailOtp.trim()) {
+      setAccountError("Enter the OTP sent to your new email.");
+      return;
+    }
+
     setIsSavingAccount(true);
     setAccountError("");
     setAccountStatus("");
 
     try {
-      const response = await updateCurrentUser(nextProfile);
+      const response = await updateCurrentUser({
+        ...nextProfile,
+        emailOtp: emailOtp.trim(),
+      });
       const updatedUser = response.user || nextProfile;
       const updatedProfile = {
         name: updatedUser.name || nextProfile.name,
@@ -105,7 +152,14 @@ export default function ProfilePage() {
         name: updatedProfile.name,
         email: updatedProfile.email,
       });
-      setAccountStatus("Profile updated successfully.");
+      setEmailOtp("");
+      setEmailOtpStatus("");
+      setEmailOtpError("");
+      setAccountStatus(
+        emailChanged
+          ? "Profile updated. Your new email has been verified."
+          : "Profile updated successfully.",
+      );
     } catch (error) {
       setAccountError(error.message || "Unable to update profile.");
     } finally {
@@ -226,6 +280,41 @@ export default function ProfilePage() {
                     onChange={handleAccountChange}
                     required
                   />
+                  {emailChanged ? (
+                    <div className="profile-email-verification">
+                      <span>Verification required for this new email.</span>
+                      <div className="profile-otp-row">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          name="emailOtp"
+                          placeholder="Enter OTP"
+                          value={emailOtp}
+                          onChange={(event) => {
+                            setEmailOtp(event.target.value);
+                            setAccountError("");
+                            setEmailOtpError("");
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="profile-otp-btn"
+                          onClick={handleSendEmailOtp}
+                          disabled={isSendingEmailOtp}
+                        >
+                          {isSendingEmailOtp ? "Sending..." : "Send OTP"}
+                        </button>
+                      </div>
+                      {emailOtpStatus ? (
+                        <span className="profile-otp-status">
+                          {emailOtpStatus}
+                        </span>
+                      ) : null}
+                      {emailOtpError ? (
+                        <span className="profile-otp-error">{emailOtpError}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </label>
 
                 {accountStatus ? (
@@ -283,6 +372,13 @@ export default function ProfilePage() {
                     onChange={handlePasswordChange}
                     required
                   />
+                  <button
+                    type="button"
+                    className="profile-inline-btn profile-forgot-password"
+                    onClick={() => navigate("/forgot-password")}
+                  >
+                    Forgot password?
+                  </button>
                 </label>
 
                 <label>
@@ -307,7 +403,7 @@ export default function ProfilePage() {
                   </p>
                 ) : null}
 
-                <div className="profile-form-actions">
+                <div className="profile-form-actions profile-password-actions">
                   <button
                     type="submit"
                     className="profile-primary-btn"
