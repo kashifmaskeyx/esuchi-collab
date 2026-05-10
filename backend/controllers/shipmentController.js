@@ -4,13 +4,32 @@ const Shipment = require("../models/shipmentModel");
 // GET all shipments
 exports.getShipments = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, page = 1 } = req.query;
+
+    const limit = 10;
+    const skip = (parseInt(page) - 1) * limit;
+
+    // filter
     const query = status ? { status } : {};
+
+    // total count (for pagination info)
+    const totalShipments = await Shipment.countDocuments(query);
+
     const shipments = await Shipment.find(query)
       .populate("products.product", "name code")
       .populate("createdBy", "name")
-      .sort("-createdAt");
-    res.json({ success: true, count: shipments.length, data: shipments });
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      success: true,
+      count: shipments.length,
+      totalShipments,
+      totalPages: Math.ceil(totalShipments / limit),
+      currentPage: parseInt(page),
+      data: shipments,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
