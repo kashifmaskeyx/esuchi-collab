@@ -35,11 +35,23 @@ exports.createSupplier = async (req, res) => {
 // GET all suppliers
 exports.getSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find().sort("-createdAt");
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const totalSuppliers = await Supplier.countDocuments();
+
+    const suppliers = await Supplier.find()
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: suppliers.length,
+      totalSuppliers,
+      totalPages: Math.ceil(totalSuppliers / limit),
+      currentPage: page,
       data: suppliers,
     });
   } catch (error) {

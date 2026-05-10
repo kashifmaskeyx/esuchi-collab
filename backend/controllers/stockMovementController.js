@@ -30,7 +30,9 @@ exports.createMovement = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const parsedMovementDate = movementDate ? new Date(movementDate) : new Date();
+    const parsedMovementDate = movementDate
+      ? new Date(movementDate)
+      : new Date();
 
     if (Number.isNaN(parsedMovementDate.getTime())) {
       return res.status(400).json({ message: "Invalid movement date" });
@@ -96,14 +98,25 @@ exports.createMovement = async (req, res) => {
 //
 exports.getMovements = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const totalMovements = await StockMovement.countDocuments();
+
     const movements = await StockMovement.find()
       .populate("product", "name")
       .populate("user", "name")
-      .sort("-createdAt");
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: movements.length,
+      totalMovements,
+      totalPages: Math.ceil(totalMovements / limit),
+      currentPage: page,
       data: movements,
     });
   } catch (err) {
@@ -116,12 +129,27 @@ exports.getMovements = async (req, res) => {
 //
 exports.getMovementsByProduct = async (req, res) => {
   try {
-    const movements = await StockMovement.find({
-      product: req.params.productId,
-    }).sort("-createdAt");
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const query = { product: req.params.productId };
+
+    const totalMovements = await StockMovement.countDocuments(query);
+
+    const movements = await StockMovement.find(query)
+      .populate("product", "name")
+      .populate("user", "name")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
+      count: movements.length,
+      totalMovements,
+      totalPages: Math.ceil(totalMovements / limit),
+      currentPage: page,
       data: movements,
     });
   } catch (err) {
