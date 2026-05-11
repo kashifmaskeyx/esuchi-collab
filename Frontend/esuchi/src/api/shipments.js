@@ -17,6 +17,14 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+const getProductsFromResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return Array.isArray(data?.products) ? data.products : [];
+};
+
 export const getShipments = async () => {
   const response = await API.get("/shipments");
   return response.data;
@@ -29,7 +37,7 @@ export const getSuppliers = async () => {
 
 export const getProducts = async () => {
   const response = await API.get("/products");
-  return response.data;
+  return getProductsFromResponse(response.data);
 };
 
 export const createShipment = async (payload) => {
