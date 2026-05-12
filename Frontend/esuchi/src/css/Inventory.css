@@ -230,10 +230,10 @@
 }
 
 .inventory-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(180px, max-content);
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .inventory-search {
@@ -504,6 +504,15 @@
     justify-content: space-between;
     flex-wrap: wrap;
   }
+
+  .inventory-tools {
+    width: 100%;
+  }
+
+  .inventory-search,
+  .inventory-filter {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -515,13 +524,17 @@
     grid-template-columns: 1fr;
   }
 
-  .inventory-tools,
-  .inventory-search,
-  .inventory-filter {
+  .inventory-tools {
     width: 100%;
   }
 
   .inventory-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .inventory-tools {
     grid-template-columns: 1fr;
   }
 }
