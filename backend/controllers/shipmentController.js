@@ -2,6 +2,7 @@
 const Shipment = require("../models/shipmentModel");
 const Product = require("../models/productModel");
 const Supplier = require("../models/supplierModel");
+const createAuditLog = require("../utils/auditLogger");
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
@@ -104,6 +105,16 @@ exports.createShipment = async (req, res) => {
       ...req.body,
       createdBy: req.user._id,
     });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_SHIPMENT",
+      entity: "Shipment",
+      entityId: shipment._id,
+      newData: shipment.toObject ? shipment.toObject() : shipment,
+      req,
+    });
+
     res.status(201).json({ success: true, data: shipment });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -122,16 +133,31 @@ exports.updateShipmentStatus = async (req, res) => {
         .json({ success: false, message: "Invalid status value" });
     }
 
+    const oldShipment = await Shipment.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
+
+    if (!oldShipment)
+      return res
+        .status(404)
+        .json({ success: false, message: "Shipment not found" });
+
     const shipment = await Shipment.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user._id },
       { status },
       { new: true },
     );
 
-    if (!shipment)
-      return res
-        .status(404)
-        .json({ success: false, message: "Shipment not found" });
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_SHIPMENT_STATUS",
+      entity: "Shipment",
+      entityId: shipment._id,
+      oldData: oldShipment.toObject(),
+      newData: shipment.toObject(),
+      req,
+    });
 
     res.json({ success: true, data: shipment });
   } catch (err) {
@@ -151,6 +177,15 @@ exports.deleteShipment = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Shipment not found" });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_SHIPMENT",
+      entity: "Shipment",
+      entityId: shipment._id,
+      oldData: shipment.toObject ? shipment.toObject() : shipment,
+      req,
+    });
 
     res.json({ success: true, message: "Shipment deleted" });
   } catch (err) {

@@ -1,5 +1,6 @@
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
 
 //
 // CREATE inventory (usually when product is created)
@@ -29,6 +30,15 @@ exports.createInventory = async (req, res) => {
       user: req.user._id,
       currentStock,
       minimumStock,
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_INVENTORY",
+      entity: "Inventory",
+      entityId: inventory._id,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
     });
 
     res.status(201).json({ success: true, data: inventory });
@@ -103,10 +113,22 @@ exports.updateStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
+    const oldInventory = inventory.toObject ? inventory.toObject() : inventory;
+
     inventory.currentStock = currentStock;
     inventory.lastUpdated = Date.now();
 
     await inventory.save();
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_INVENTORY_STOCK",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: oldInventory,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
+    });
 
     res.json({ success: true, data: inventory });
   } catch (err) {
@@ -130,10 +152,22 @@ exports.updateMinimumStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
+    const oldInventory = inventory.toObject ? inventory.toObject() : inventory;
+
     inventory.minimumStock = minimumStock;
     inventory.lastUpdated = Date.now();
 
     await inventory.save();
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_INVENTORY_MINIMUM",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: oldInventory,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
+    });
 
     res.json({ success: true, data: inventory });
   } catch (err) {
@@ -154,6 +188,15 @@ exports.deleteInventory = async (req, res) => {
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_INVENTORY",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
+    });
 
     res.json({ success: true, message: "Inventory deleted" });
   } catch (err) {

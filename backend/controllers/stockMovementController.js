@@ -1,6 +1,7 @@
 const StockMovement = require("../models/stockMovementModel");
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
 
 //
 // CREATE stock movement
@@ -85,6 +86,15 @@ exports.createMovement = async (req, res) => {
       movementType,
       quantity: numericQuantity,
       movementDate: parsedMovementDate,
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      newData: movement.toObject ? movement.toObject() : movement,
+      req,
     });
 
     res.status(201).json({
@@ -173,6 +183,15 @@ exports.deleteMovement = async (req, res) => {
     if (!movement) {
       return res.status(404).json({ message: "Movement not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      oldData: movement.toObject ? movement.toObject() : movement,
+      req,
+    });
 
     res.json({ success: true, message: "Movement deleted" });
   } catch (err) {

@@ -1,6 +1,7 @@
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const Inventory = require("../models/inventoryModel");
+const createAuditLog = require("../utils/auditLogger");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -83,6 +84,15 @@ exports.createOrder = async (req, res) => {
       user: req.user._id,
       orderItems: itemsWithPrice,
       totalAmount,
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      newData: order.toObject ? order.toObject() : order,
+      req,
     });
 
     // update stock
@@ -179,15 +189,30 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
+    const oldOrder = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!oldOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
     const order = await Order.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
       { status },
       { new: true },
     );
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_ORDER_STATUS",
+      entity: "Order",
+      entityId: order._id,
+      oldData: oldOrder.toObject(),
+      newData: order.toObject(),
+      req,
+    });
 
     res.json({
       success: true,
@@ -208,6 +233,15 @@ exports.deleteOrder = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      oldData: order.toObject ? order.toObject() : order,
+      req,
+    });
 
     res.json({
       success: true,
