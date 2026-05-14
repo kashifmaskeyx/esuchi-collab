@@ -15,6 +15,13 @@ const inventorySchema = new mongoose.Schema(
       unique: true, // one inventory per product
     },
 
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
     currentStock: {
       type: Number,
       required: true,

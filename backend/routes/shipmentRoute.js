@@ -1,7 +1,7 @@
 // routes/shipmentRoutes.js
 const express = require("express");
 const router = express.Router();
-const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const { protect } = require("../middlewares/authMiddleware");
 const {
   getShipments,
   getShipmentById,
@@ -16,13 +16,13 @@ router.get("/", protect, getShipments);
 // GET single shipment
 router.get("/:id", protect, getShipmentById);
 
-// POST create shipment (admin only)
-router.post("/", protect, adminOnly, createShipment);
+// POST create shipment
+router.post("/", protect, createShipment);
 
 // PATCH update shipment status
 router.patch("/:id/status", protect, updateShipmentStatus);
 
-// DELETE shipment (admin only)
-router.delete("/:id", protect, adminOnly, deleteShipment);
+// DELETE shipment
+router.delete("/:id", protect, deleteShipment);
 
 module.exports = router;

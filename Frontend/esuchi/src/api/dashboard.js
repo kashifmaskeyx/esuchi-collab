@@ -7,6 +7,16 @@ const API = axios.create({
   },
 });
 
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 export const getDashboardData = async () => {
   const [productsResponse, inventoryResponse, movementsResponse] =
     await Promise.all([

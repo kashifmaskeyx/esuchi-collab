@@ -10,7 +10,7 @@ exports.createMovement = async (req, res) => {
     const { product, movementType, quantity, movementDate, confirmLowStock } =
       req.body;
 
-    const inventory = await Inventory.findOne({ product });
+    const inventory = await Inventory.findOne({ product, user: req.user._id });
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -24,7 +24,10 @@ exports.createMovement = async (req, res) => {
         .json({ message: "Quantity must be a number greater than 0" });
     }
 
-    const productRecord = await Product.findById(product);
+    const productRecord = await Product.findOne({
+      _id: product,
+      user: req.user._id,
+    });
 
     if (!productRecord) {
       return res.status(404).json({ message: "Product not found" });
@@ -96,7 +99,7 @@ exports.createMovement = async (req, res) => {
 //
 exports.getMovements = async (req, res) => {
   try {
-    const movements = await StockMovement.find()
+    const movements = await StockMovement.find({ user: req.user._id })
       .populate("product", "name")
       .populate("user", "name")
       .sort("-createdAt");
@@ -118,6 +121,7 @@ exports.getMovementsByProduct = async (req, res) => {
   try {
     const movements = await StockMovement.find({
       product: req.params.productId,
+      user: req.user._id,
     }).sort("-createdAt");
 
     res.json({
@@ -134,7 +138,10 @@ exports.getMovementsByProduct = async (req, res) => {
 //
 exports.deleteMovement = async (req, res) => {
   try {
-    const movement = await StockMovement.findByIdAndDelete(req.params.id);
+    const movement = await StockMovement.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!movement) {
       return res.status(404).json({ message: "Movement not found" });
