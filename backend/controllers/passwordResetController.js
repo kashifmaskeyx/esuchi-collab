@@ -6,6 +6,9 @@ const { sendPasswordResetOtp } = require("../config/mail");
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const PASSWORD_RESET_WINDOW_MS = 15 * 60 * 1000;
 
+const hashResetToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
 // ================= FORGOT PASSWORD — REQUEST OTP =================
 exports.requestPasswordResetOtp = async (req, res) => {
   try {
@@ -33,6 +36,8 @@ exports.requestPasswordResetOtp = async (req, res) => {
     user.passwordResetOtpHash = otpHash;
     user.passwordResetOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     user.passwordResetAllowedUntil = null;
+    user.passwordResetTokenHash = null;
+    user.passwordResetTokenExpires = null;
     await user.save();
 
     try {
@@ -42,6 +47,8 @@ exports.requestPasswordResetOtp = async (req, res) => {
       user.passwordResetOtpHash = null;
       user.passwordResetOtpExpires = null;
       user.passwordResetAllowedUntil = null;
+      user.passwordResetTokenHash = null;
+      user.passwordResetTokenExpires = null;
       await user.save();
       return res.status(500).json({
         message: "Could not send email. Try again later.",
@@ -50,7 +57,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
 
     res.json({ message: "Password reset OTP sent to your email." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Unable to request password reset" });
   }
 };
 
@@ -75,6 +82,8 @@ exports.verifyPasswordResetOtp = async (req, res) => {
       user.passwordResetOtpHash = null;
       user.passwordResetOtpExpires = null;
       user.passwordResetAllowedUntil = null;
+      user.passwordResetTokenHash = null;
+      user.passwordResetTokenExpires = null;
       await user.save();
       return res.status(400).json({
         message: "Code has expired. Request a new one from forgot password.",
@@ -89,29 +98,37 @@ exports.verifyPasswordResetOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid code" });
     }
 
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
     user.passwordResetOtpHash = null;
     user.passwordResetOtpExpires = null;
-    user.passwordResetAllowedUntil = new Date(
-      Date.now() + PASSWORD_RESET_WINDOW_MS,
-    );
+    user.passwordResetAllowedUntil = null;
+    user.passwordResetTokenHash = hashResetToken(resetToken);
+    user.passwordResetTokenExpires = new Date(Date.now() + PASSWORD_RESET_WINDOW_MS);
     await user.save();
 
     res.json({
       message: "Code verified. You can set a new password.",
+      resetToken,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Unable to verify reset code" });
   }
 };
 
 // ================= RESET PASSWORD (AFTER OTP VERIFIED ON PREVIOUS SCREEN) =================
 exports.resetPasswordAfterOtpVerified = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, resetToken } = req.body;
     const confirmPassword =
       req.body.confirmPassword ?? req.body.confirm_password;
 
-    if (!email?.trim() || !password?.trim() || !confirmPassword?.trim()) {
+    if (
+      !email?.trim() ||
+      !password?.trim() ||
+      !confirmPassword?.trim() ||
+      !resetToken?.trim()
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -120,15 +137,17 @@ exports.resetPasswordAfterOtpVerified = async (req, res) => {
     }
 
     const user = await User.findOne({ email: email.trim() });
-    if (!user || !user.passwordResetAllowedUntil) {
+    if (!user || !user.passwordResetTokenHash || !user.passwordResetTokenExpires) {
       return res.status(400).json({
         message:
           "Verify your code first, or your session expired. Start again from forgot password.",
       });
     }
 
-    if (Date.now() > user.passwordResetAllowedUntil.getTime()) {
+    if (Date.now() > user.passwordResetTokenExpires.getTime()) {
       user.passwordResetAllowedUntil = null;
+      user.passwordResetTokenHash = null;
+      user.passwordResetTokenExpires = null;
       await user.save();
       return res.status(400).json({
         message:
@@ -136,8 +155,17 @@ exports.resetPasswordAfterOtpVerified = async (req, res) => {
       });
     }
 
+    if (hashResetToken(resetToken) !== user.passwordResetTokenHash) {
+      return res.status(400).json({
+        message:
+          "Verify your code first, or your session expired. Start again from forgot password.",
+      });
+    }
+
     user.password = password;
     user.passwordResetAllowedUntil = null;
+    user.passwordResetTokenHash = null;
+    user.passwordResetTokenExpires = null;
     await user.save();
 
     res.json({
@@ -145,6 +173,6 @@ exports.resetPasswordAfterOtpVerified = async (req, res) => {
         "Password reset successful. You can log in with your new password.",
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Unable to reset password" });
   }
 };

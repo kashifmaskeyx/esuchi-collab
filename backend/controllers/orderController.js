@@ -1,6 +1,75 @@
+const mongoose = require("mongoose");
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const Inventory = require("../models/inventoryModel");
+
+const withTransaction = async (handler) => {
+  const session = await mongoose.startSession();
+
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      result = await handler(session);
+    });
+    return result;
+  } finally {
+    await session.endSession();
+  }
+};
+
+const buildOrderItems = (orderItems) => {
+  const itemsByProduct = new Map();
+
+  for (let i = 0; i < orderItems.length; i++) {
+    const item = orderItems[i];
+    const quantity = Number(item.quantity);
+
+    if (!item.product) {
+      const error = new Error(`Missing product in orderItems[${i}]`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      const error = new Error(`Invalid quantity in orderItems[${i}]`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const productId = String(item.product);
+    const existing = itemsByProduct.get(productId);
+
+    itemsByProduct.set(productId, {
+      product: item.product,
+      quantity: (existing?.quantity || 0) + quantity,
+    });
+  }
+
+  return Array.from(itemsByProduct.values());
+};
+
+const restoreStock = async (items, userId, session) => {
+  await Promise.all(
+    items.map(async (item) => {
+      const inventory = await Inventory.findOneAndUpdate(
+        { product: item.product, user: userId },
+        {
+          $inc: { currentStock: item.quantity },
+          lastUpdated: Date.now(),
+        },
+        { new: true, session },
+      );
+
+      if (inventory) {
+        await Product.findOneAndUpdate(
+          { _id: item.product, user: userId },
+          { quantity: inventory.currentStock },
+          { runValidators: true, session },
+        );
+      }
+    }),
+  );
+};
 
 exports.createOrder = async (req, res) => {
   try {
@@ -10,105 +79,113 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: "No order items provided" });
     }
 
-    let totalAmount = 0;
+    const order = await withTransaction(async (session) => {
+      const normalizedItems = buildOrderItems(orderItems);
+      const itemsWithPrice = [];
 
-    const itemsWithPrice = [];
+      for (const item of normalizedItems) {
+        const product = await Product.findOne({
+          _id: item.product,
+          user: req.user._id,
+        }).session(session);
 
-    for (let i = 0; i < orderItems.length; i++) {
-      const item = orderItems[i];
-      const quantity = Number(item.quantity);
+        const inventory = await Inventory.findOne({
+          product: item.product,
+          user: req.user._id,
+        }).session(session);
 
-      if (!item.product) {
-        return res.status(400).json({
-          message: `Missing product in orderItems[${i}]`,
+        if (!product) {
+          const error = new Error(`Product not found: ${item.product}`);
+          error.statusCode = 404;
+          throw error;
+        }
+
+        if (!inventory) {
+          const error = new Error(`Inventory not found for product: ${product.name}`);
+          error.statusCode = 404;
+          throw error;
+        }
+
+        if (inventory.currentStock < item.quantity) {
+          const error = new Error(`Insufficient stock for ${product.name}`);
+          error.statusCode = 400;
+          throw error;
+        }
+
+        const price = Number(product.price);
+        if (!Number.isFinite(price) || price < 0) {
+          const error = new Error(`Invalid product price for ${product.name}`);
+          error.statusCode = 400;
+          throw error;
+        }
+
+        itemsWithPrice.push({
+          product: item.product,
+          quantity: item.quantity,
+          price,
         });
       }
 
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        return res.status(400).json({
-          message: `Invalid quantity in orderItems[${i}]`,
-        });
+      const totalAmount = itemsWithPrice.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+
+      if (!Number.isFinite(totalAmount)) {
+        const error = new Error("Invalid total amount");
+        error.statusCode = 400;
+        throw error;
       }
 
-      const product = await Product.findOne({
-        _id: item.product,
-        user: req.user._id,
-      });
-      const inventory = await Inventory.findOne({
-        product: item.product,
-        user: req.user._id,
-      });
+      for (const item of itemsWithPrice) {
+        const inventory = await Inventory.findOneAndUpdate(
+          {
+            product: item.product,
+            user: req.user._id,
+            currentStock: { $gte: item.quantity },
+          },
+          {
+            $inc: { currentStock: -item.quantity },
+            lastUpdated: Date.now(),
+          },
+          { new: true, session },
+        );
 
-      if (!product) {
-        return res.status(404).json({
-          message: `Product not found: ${item.product}`,
-        });
+        if (!inventory) {
+          const error = new Error("Insufficient stock");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        await Product.findOneAndUpdate(
+          { _id: item.product, user: req.user._id },
+          { quantity: inventory.currentStock },
+          { runValidators: true, session },
+        );
       }
 
-      if (!inventory) {
-        return res.status(404).json({
-          message: `Inventory not found for product: ${product.name}`,
-        });
-      }
+      const [createdOrder] = await Order.create(
+        [
+          {
+            user: req.user._id,
+            orderItems: itemsWithPrice,
+            totalAmount,
+          },
+        ],
+        { session },
+      );
 
-      if (inventory.currentStock < quantity) {
-        return res.status(400).json({
-          message: `Insufficient stock for ${product.name}`,
-        });
-      }
-
-      const price = Number(product.price);
-      if (!Number.isFinite(price) || price < 0) {
-        return res.status(400).json({
-          message: `Invalid product price for ${product.name}`,
-        });
-      }
-
-      const itemWithPrice = {
-        product: item.product,
-        quantity,
-        price,
-      };
-
-      totalAmount += price * quantity;
-
-      itemsWithPrice.push(itemWithPrice);
-    }
-
-    if (!Number.isFinite(totalAmount)) {
-      return res.status(400).json({ message: "Invalid total amount" });
-    }
-
-    const order = await Order.create({
-      user: req.user._id,
-      orderItems: itemsWithPrice,
-      totalAmount,
+      return createdOrder;
     });
-
-    // update stock
-    for (let item of itemsWithPrice) {
-      await Product.findOneAndUpdate(
-        { _id: item.product, user: req.user._id },
-        {
-          $inc: { quantity: -item.quantity },
-        },
-      );
-
-      await Inventory.findOneAndUpdate(
-        { product: item.product, user: req.user._id },
-        {
-          $inc: { currentStock: -item.quantity },
-          lastUpdated: Date.now(),
-        },
-      );
-    }
 
     res.status(201).json({
       success: true,
       data: order,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Unable to create order",
+    });
   }
 };
 
@@ -119,9 +196,11 @@ exports.getOrders = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const totalOrders = await Order.countDocuments();
+    const query = { user: req.user._id };
 
-    const orders = await Order.find()
+    const totalOrders = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
       .populate("user", "name email")
       .populate("orderItems.product", "name price")
       .sort("-createdAt")
@@ -137,7 +216,7 @@ exports.getOrders = async (req, res) => {
       data: orders,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to load orders" });
   }
 };
 //user
@@ -166,7 +245,7 @@ exports.getMyOrders = async (req, res) => {
       data: orders,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to load orders" });
   }
 };
 //admin update
@@ -194,26 +273,34 @@ exports.updateOrderStatus = async (req, res) => {
       data: order,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to update order status" });
   }
 };
 //amin delete
 exports.deleteOrder = async (req, res) => {
   try {
-    const order = await Order.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    await withTransaction(async (session) => {
+      const order = await Order.findOneAndDelete({
+        _id: req.params.id,
+        user: req.user._id,
+      }).session(session);
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+      if (!order) {
+        const error = new Error("Order not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      await restoreStock(order.orderItems, req.user._id, session);
+    });
 
     res.json({
       success: true,
       message: "Order deleted",
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Unable to delete order",
+    });
   }
 };

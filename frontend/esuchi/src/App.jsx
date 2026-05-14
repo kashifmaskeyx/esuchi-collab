@@ -14,14 +14,16 @@ import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./components/ProfilePage";
 import SalesOrders from "./components/SalesOrders";
 import StaffRoles from "./components/StaffRoles";
+import { getStoredUser } from "./api/auth";
+import Returns from "./components/Returns";
 
 const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
 ); // Replace when the component is ready
 
 const ProtectedRoute = () => {
-  const token = localStorage.getItem("token");
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+  const user = getStoredUser();
+  return user ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 function App() {
@@ -40,6 +42,7 @@ function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/inventory" element={<Inventory />} />
       <Route path="/orders" element={<SalesOrders />} />
+      <Route path="/returns" element={<Returns />} />
       <Route path="/products" element={<Products />} />
       <Route path="/customers" element={<BlankPage />} />
       <Route path="/shipment" element={<Shipping />} />

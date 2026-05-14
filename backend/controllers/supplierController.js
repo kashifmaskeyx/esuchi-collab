@@ -28,7 +28,7 @@ exports.createSupplier = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: "Unable to create supplier",
     });
   }
 };
@@ -40,12 +40,18 @@ exports.getSuppliers = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const totalSuppliers = await Supplier.countDocuments();
+    const query = { user: req.user._id };
+    const shouldPaginate = req.query.page !== undefined;
 
-    const suppliers = await Supplier.find()
-      .sort("-createdAt")
-      .skip(skip)
-      .limit(limit);
+    const totalSuppliers = await Supplier.countDocuments(query);
+
+    let suppliersQuery = Supplier.find(query).sort("-createdAt");
+
+    if (shouldPaginate) {
+      suppliersQuery = suppliersQuery.skip(skip).limit(limit);
+    }
+
+    const suppliers = await suppliersQuery;
 
     res.json({
       success: true,
@@ -58,7 +64,7 @@ exports.getSuppliers = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to load suppliers",
     });
   }
 };
@@ -85,7 +91,7 @@ exports.getSupplierById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to load supplier",
     });
   }
 };
@@ -122,7 +128,7 @@ exports.updateSupplier = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: "Unable to update supplier",
     });
   }
 };
@@ -149,7 +155,7 @@ exports.deleteSupplier = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to delete supplier",
     });
   }
 };

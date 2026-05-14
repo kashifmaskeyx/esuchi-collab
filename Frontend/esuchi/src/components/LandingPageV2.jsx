@@ -102,7 +102,7 @@ const faqItems = [
 export default function LandingPageV2() {
   const navigate = useNavigate();
   const hasToken =
-    typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
+    typeof window !== "undefined" && Boolean(localStorage.getItem("currentUser"));
 
   const scrollToSection = (sectionId) => {
     const section = document.getElementById(sectionId);

@@ -20,6 +20,11 @@ const {
 } = require("../controllers/passwordResetController");
 
 const { protect } = require("../middlewares/authMiddleware");
+const {
+  authRateLimit,
+  otpRequestRateLimit,
+  otpVerifyRateLimit,
+} = require("../middlewares/rateLimitMiddleware");
 
 //
 // ================= SIGNUP (OTP FLOW) =================
@@ -29,6 +34,7 @@ const { protect } = require("../middlewares/authMiddleware");
 router.post(
   "/signup-otp",
   [body("email").isEmail().withMessage("Valid email required")],
+  otpRequestRateLimit,
   requestSignupOtp,
 );
 
@@ -41,6 +47,7 @@ router.post(
     body("name").notEmpty(),
     body("password").isLength({ min: 6 }),
   ],
+  otpVerifyRateLimit,
   verifySignupOtp,
 );
 
@@ -50,6 +57,7 @@ router.post(
 router.post(
   "/login",
   [body("email").isEmail(), body("password").notEmpty()],
+  authRateLimit,
   login,
 );
 
@@ -61,6 +69,7 @@ router.post(
   "/me/email-otp",
   protect,
   [body("email").isEmail()],
+  otpRequestRateLimit,
   requestEmailChangeOtp,
 );
 router.put(
@@ -84,11 +93,12 @@ router.post("/logout", protect, logout);
 //
 // ================= FORGOT PASSWORD =================
 //
-router.post("/forgot-password", requestPasswordResetOtp);
+router.post("/forgot-password", otpRequestRateLimit, requestPasswordResetOtp);
 
 router.post(
   "/verify-reset-otp",
   [body("email").isEmail(), body("otp").notEmpty()],
+  otpVerifyRateLimit,
   verifyPasswordResetOtp,
 );
 
@@ -96,9 +106,11 @@ router.post(
   "/reset-password",
   [
     body("email").isEmail(),
+    body("resetToken").notEmpty(),
     body("password").isLength({ min: 6 }),
     body("confirmPassword").notEmpty(),
   ],
+  authRateLimit,
   resetPasswordAfterOtpVerified,
 );
 

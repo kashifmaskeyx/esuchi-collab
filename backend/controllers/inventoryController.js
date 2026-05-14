@@ -1,5 +1,20 @@
+const mongoose = require("mongoose");
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+
+const withTransaction = async (handler) => {
+  const session = await mongoose.startSession();
+
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      result = await handler(session);
+    });
+    return result;
+  } finally {
+    await session.endSession();
+  }
+};
 
 //
 // CREATE inventory (usually when product is created)
@@ -7,33 +22,67 @@ const Product = require("../models/productModel");
 exports.createInventory = async (req, res) => {
   try {
     const { product, currentStock, minimumStock } = req.body;
+    const numericStock = Number(currentStock);
+    const numericMinimumStock = Number(minimumStock);
 
-    const productRecord = await Product.findOne({
-      _id: product,
-      user: req.user._id,
-    });
-
-    if (!productRecord) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    const existing = await Inventory.findOne({ product, user: req.user._id });
-    if (existing) {
+    if (!Number.isFinite(numericStock) || numericStock < 0) {
       return res
         .status(400)
-        .json({ message: "Inventory already exists for this product" });
+        .json({ message: "Current stock must be 0 or greater" });
     }
 
-    const inventory = await Inventory.create({
-      product,
-      user: req.user._id,
-      currentStock,
-      minimumStock,
+    if (!Number.isFinite(numericMinimumStock) || numericMinimumStock < 0) {
+      return res
+        .status(400)
+        .json({ message: "Minimum stock must be 0 or greater" });
+    }
+
+    const inventory = await withTransaction(async (session) => {
+      const productRecord = await Product.findOne({
+        _id: product,
+        user: req.user._id,
+      }).session(session);
+
+      if (!productRecord) {
+        const error = new Error("Product not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const existing = await Inventory.findOne({
+        product,
+        user: req.user._id,
+      }).session(session);
+
+      if (existing) {
+        const error = new Error("Inventory already exists for this product");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const [createdInventory] = await Inventory.create(
+        [
+          {
+            product,
+            user: req.user._id,
+            currentStock: numericStock,
+            minimumStock: numericMinimumStock,
+          },
+        ],
+        { session },
+      );
+
+      productRecord.quantity = numericStock;
+      await productRecord.save({ session });
+
+      return createdInventory;
     });
 
     res.status(201).json({ success: true, data: inventory });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Unable to create inventory",
+    });
   }
 };
 
@@ -46,13 +95,20 @@ exports.getInventories = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const totalInventories = await Inventory.countDocuments();
+    const query = { user: req.user._id };
+    const shouldPaginate = req.query.page !== undefined;
 
-    const inventories = await Inventory.find()
+    const totalInventories = await Inventory.countDocuments(query);
+
+    let inventoriesQuery = Inventory.find(query)
       .populate("product", "name price")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .sort({ createdAt: -1 });
+
+    if (shouldPaginate) {
+      inventoriesQuery = inventoriesQuery.skip(skip).limit(limit);
+    }
+
+    const inventories = await inventoriesQuery;
 
     res.json({
       success: true,
@@ -63,7 +119,7 @@ exports.getInventories = async (req, res) => {
       data: inventories,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to load inventory" });
   }
 };
 
@@ -83,7 +139,7 @@ exports.getInventoryById = async (req, res) => {
 
     res.json({ success: true, data: inventory });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to load inventory" });
   }
 };
 
@@ -93,24 +149,47 @@ exports.getInventoryById = async (req, res) => {
 exports.updateStock = async (req, res) => {
   try {
     const { currentStock } = req.body;
+    const numericStock = Number(currentStock);
 
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
-
-    if (!inventory) {
-      return res.status(404).json({ message: "Inventory not found" });
+    if (!Number.isFinite(numericStock) || numericStock < 0) {
+      return res
+        .status(400)
+        .json({ message: "Current stock must be 0 or greater" });
     }
 
-    inventory.currentStock = currentStock;
-    inventory.lastUpdated = Date.now();
+    const inventory = await withTransaction(async (session) => {
+      const updatedInventory = await Inventory.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          user: req.user._id,
+        },
+        {
+          currentStock: numericStock,
+          lastUpdated: Date.now(),
+        },
+        { new: true, runValidators: true, session },
+      );
 
-    await inventory.save();
+      if (!updatedInventory) {
+        const error = new Error("Inventory not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      await Product.findOneAndUpdate(
+        { _id: updatedInventory.product, user: req.user._id },
+        { quantity: numericStock },
+        { runValidators: true, session },
+      );
+
+      return updatedInventory;
+    });
 
     res.json({ success: true, data: inventory });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Unable to update stock",
+    });
   }
 };
 
@@ -120,6 +199,13 @@ exports.updateStock = async (req, res) => {
 exports.updateMinimumStock = async (req, res) => {
   try {
     const { minimumStock } = req.body;
+    const numericMinimumStock = Number(minimumStock);
+
+    if (!Number.isFinite(numericMinimumStock) || numericMinimumStock < 0) {
+      return res
+        .status(400)
+        .json({ message: "Minimum stock must be 0 or greater" });
+    }
 
     const inventory = await Inventory.findOne({
       _id: req.params.id,
@@ -130,14 +216,14 @@ exports.updateMinimumStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
-    inventory.minimumStock = minimumStock;
+    inventory.minimumStock = numericMinimumStock;
     inventory.lastUpdated = Date.now();
 
     await inventory.save();
 
     res.json({ success: true, data: inventory });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to update minimum stock" });
   }
 };
 
@@ -146,7 +232,7 @@ exports.updateMinimumStock = async (req, res) => {
 //
 exports.deleteInventory = async (req, res) => {
   try {
-    const inventory = await Inventory.findOneAndDelete({
+    const inventory = await Inventory.findOne({
       _id: req.params.id,
       user: req.user._id,
     });
@@ -155,8 +241,25 @@ exports.deleteInventory = async (req, res) => {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
+    const product = await Product.exists({
+      _id: inventory.product,
+      user: req.user._id,
+    });
+
+    if (product) {
+      return res.status(409).json({
+        message:
+          "Inventory is linked to a product. Delete the product to remove both records.",
+      });
+    }
+
+    await Inventory.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
     res.json({ success: true, message: "Inventory deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to delete inventory" });
   }
 };

@@ -84,12 +84,13 @@ export default function OtpCard() {
         return;
       }
 
-      await verifyOtp({ email, otp: code });
+      const response = await verifyOtp({ email, otp: code });
       navigate("/reset-password", {
         replace: true,
         state: {
           resetVerified: true,
           email,
+          resetToken: response.resetToken,
         },
       });
     } catch (err) {

@@ -22,7 +22,7 @@ exports.createStaff = async (req, res) => {
     res.status(201).json({ success: true, data: staff });
   } catch (err) {
     const message =
-      err.code === 11000 ? "Staff email already exists" : err.message;
+      err.code === 11000 ? "Staff email already exists" : "Unable to create staff member";
     res.status(400).json({ success: false, message });
   }
 };
@@ -33,7 +33,7 @@ exports.getStaff = async (req, res) => {
 
     res.json({ success: true, count: staff.length, data: staff });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to load staff" });
   }
 };
 
@@ -65,7 +65,7 @@ exports.updateStaff = async (req, res) => {
     res.json({ success: true, data: staff });
   } catch (err) {
     const message =
-      err.code === 11000 ? "Staff email already exists" : err.message;
+      err.code === 11000 ? "Staff email already exists" : "Unable to update staff member";
     res.status(400).json({ success: false, message });
   }
 };
@@ -85,6 +85,6 @@ exports.deleteStaff = async (req, res) => {
 
     res.json({ success: true, message: "Staff member removed" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to delete staff member" });
   }
 };

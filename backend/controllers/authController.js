@@ -11,6 +11,15 @@ const signToken = (id) =>
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 
+const sendTokenCookie = (res, token) => {
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
+
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 //
@@ -52,7 +61,7 @@ exports.requestSignupOtp = async (req, res) => {
 
     res.json({ message: "OTP sent to email" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to send signup OTP" });
   }
 };
 
@@ -93,10 +102,10 @@ exports.verifySignupOtp = async (req, res) => {
     await user.save();
 
     const token = signToken(user._id);
+    sendTokenCookie(res, token);
 
     res.json({
       success: true,
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -105,7 +114,7 @@ exports.verifySignupOtp = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to verify signup OTP" });
   }
 };
 
@@ -142,10 +151,10 @@ exports.login = async (req, res) => {
     }
 
     const token = signToken(user._id);
+    sendTokenCookie(res, token);
 
     res.json({
       success: true,
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -154,7 +163,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to log in" });
   }
 };
 
@@ -214,7 +223,7 @@ exports.requestEmailChangeOtp = async (req, res) => {
       message: "OTP sent to your new email address.",
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to send email OTP" });
   }
 };
 
@@ -308,7 +317,7 @@ exports.updateMe = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to update profile" });
   }
 };
 
@@ -355,7 +364,7 @@ exports.changePassword = async (req, res) => {
 
     res.json({ success: true, message: "Password changed successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to change password" });
   }
 };
 
@@ -363,5 +372,10 @@ exports.changePassword = async (req, res) => {
 // ================= LOGOUT =================
 //
 exports.logout = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
   res.json({ success: true, message: "Logged out successfully" });
 };

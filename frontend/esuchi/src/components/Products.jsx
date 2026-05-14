@@ -13,7 +13,6 @@ import { getUserInitials } from "../api/auth";
 import {
   createInventory,
   createProduct,
-  deleteInventory,
   deleteProduct,
   getProductListing,
   updateInventoryMinimum,
@@ -344,10 +343,6 @@ export default function Products() {
     }
 
     try {
-      if (product.inventoryRecordId) {
-        await deleteInventory(product.inventoryRecordId);
-      }
-
       await deleteProduct(product.id);
       await loadProducts(false);
     } catch (error) {

@@ -22,7 +22,7 @@ const stockMovementSchema = new mongoose.Schema(
 
     movementType: {
       type: String,
-      enum: ["IN", "OUT", "ADJUSTMENT"],
+      enum: ["IN", "OUT", "ADJUSTMENT", "RETURN", "DAMAGED"],
       required: true,
     },
 

@@ -132,6 +132,13 @@
   grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.25fr);
 }
 
+.dashboard-analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  gap: 28px;
+  margin-bottom: 28px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -515,8 +522,118 @@
   color: var(--app-muted);
 }
 
+.revenue-chart {
+  min-height: 220px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.revenue-bar-item {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  gap: 8px;
+  align-items: end;
+  text-align: center;
+}
+
+.revenue-bar-track {
+  height: 132px;
+  border-radius: 10px;
+  background: var(--app-surface-soft);
+  border: 1px solid #edf2f7;
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+}
+
+.revenue-bar-fill {
+  width: 100%;
+  min-height: 8px;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(180deg, var(--app-blue), #22c55e);
+}
+
+.revenue-bar-item strong {
+  color: var(--app-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.revenue-bar-item p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.business-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.business-snapshot-grid article {
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--app-surface-soft) 100%);
+}
+
+.business-snapshot-grid p,
+.business-snapshot-grid strong {
+  margin: 0;
+}
+
+.business-snapshot-grid p {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.business-snapshot-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--app-text);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.order-status-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.order-status-pill {
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.order-status-pill.pending {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.order-status-pill.shipped {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.order-status-pill.delivered {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 @media (max-width: 1200px) {
-  .dashboard-bottom-grid {
+  .dashboard-bottom-grid,
+  .dashboard-analytics-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -553,6 +670,17 @@
   }
 
   .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .revenue-chart {
+    gap: 8px;
+    overflow-x: auto;
+    grid-template-columns: repeat(7, minmax(72px, 1fr));
+    padding-bottom: 4px;
+  }
+
+  .business-snapshot-grid {
     grid-template-columns: 1fr;
   }
 

@@ -71,7 +71,27 @@ const getMovementBadgeClass = (movementType) => {
     return "inventory-movement-badge out";
   }
 
+  if (movementType === "RETURN") {
+    return "inventory-movement-badge in";
+  }
+
+  if (movementType === "DAMAGED") {
+    return "inventory-movement-badge out";
+  }
+
   return "inventory-movement-badge";
+};
+
+const getMovementLabel = (movementType) => {
+  const labels = {
+    IN: "Stock In",
+    OUT: "Stock Out",
+    ADJUSTMENT: "Adjustment",
+    RETURN: "Return",
+    DAMAGED: "Damaged",
+  };
+
+  return labels[movementType] || movementType || "-";
 };
 
 export default function Inventory() {
@@ -691,6 +711,8 @@ export default function Inventory() {
               <option value="all">All movement types</option>
               <option value="IN">Stock In</option>
               <option value="OUT">Stock Out</option>
+              <option value="RETURN">Returns</option>
+              <option value="DAMAGED">Damaged / Loss</option>
             </select>
           </div>
 
@@ -731,7 +753,7 @@ export default function Inventory() {
                           ) : (
                             <ArrowDownCircle size={14} />
                           )}
-                          {row.movementType === "IN" ? "Stock In" : "Stock Out"}
+                          {getMovementLabel(row.movementType)}
                         </span>
                       </td>
                       <td>{row.quantity}</td>

@@ -11,8 +11,11 @@ exports.getShipments = async (req, res) => {
     const limit = 10;
     const skip = (parseInt(page) - 1) * limit;
 
-    // filter
-    const query = status ? { status } : {};
+    // filter to the authenticated user's shipments
+    const query = {
+      createdBy: req.user._id,
+      ...(status ? { status } : {}),
+    };
 
     // total count (for pagination info)
     const totalShipments = await Shipment.countDocuments(query);
@@ -33,7 +36,7 @@ exports.getShipments = async (req, res) => {
       data: shipments,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to load shipments" });
   }
 };
 
@@ -54,7 +57,7 @@ exports.getShipmentById = async (req, res) => {
 
     res.json({ success: true, data: shipment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to load shipment" });
   }
 };
 
@@ -106,7 +109,7 @@ exports.createShipment = async (req, res) => {
     });
     res.status(201).json({ success: true, data: shipment });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(400).json({ success: false, message: "Unable to create shipment" });
   }
 };
 
@@ -135,7 +138,7 @@ exports.updateShipmentStatus = async (req, res) => {
 
     res.json({ success: true, data: shipment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to update shipment" });
   }
 };
 
@@ -154,6 +157,6 @@ exports.deleteShipment = async (req, res) => {
 
     res.json({ success: true, message: "Shipment deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to delete shipment" });
   }
 };
