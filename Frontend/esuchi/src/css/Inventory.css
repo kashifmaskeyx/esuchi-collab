@@ -230,10 +230,10 @@
 }
 
 .inventory-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(180px, max-content);
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .inventory-search {
@@ -504,6 +504,15 @@
     justify-content: space-between;
     flex-wrap: wrap;
   }
+
+  .inventory-tools {
+    width: 100%;
+  }
+
+  .inventory-search,
+  .inventory-filter {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -515,9 +524,7 @@
     grid-template-columns: 1fr;
   }
 
-  .inventory-tools,
-  .inventory-search,
-  .inventory-filter {
+  .inventory-tools {
     width: 100%;
   }
 
@@ -526,142 +533,8 @@
   }
 }
 
-.inventory-page {
-  background: transparent;
-  color: var(--app-text);
-}
-
-.inventory-main {
-  padding: 30px 34px 28px;
-  transition: margin-left 0.28s ease;
-}
-
-.inventory-icon-btn,
-.inventory-avatar,
-.inventory-search,
-.inventory-filter,
-.inventory-secondary-btn,
-.inventory-modal-close,
-.inventory-form input,
-.inventory-form select {
-  border-color: var(--app-border);
-}
-
-.inventory-icon-btn,
-.inventory-avatar,
-.inventory-search,
-.inventory-filter,
-.inventory-secondary-btn,
-.inventory-modal-close {
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.inventory-icon-btn,
-.inventory-avatar,
-.inventory-primary-btn,
-.inventory-secondary-btn,
-.inventory-modal-close {
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.inventory-icon-btn:hover,
-.inventory-avatar:hover,
-.inventory-secondary-btn:hover,
-.inventory-modal-close:hover {
-  border-color: var(--app-border-strong);
-  background: #ffffff;
-  transform: translateY(-1px);
-}
-
-.inventory-primary-btn {
-  background: linear-gradient(135deg, var(--app-blue), var(--app-blue-strong));
-  box-shadow: 0 12px 26px rgba(35, 92, 148, 0.24);
-}
-
-.inventory-primary-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(35, 92, 148, 0.28);
-}
-
-.inventory-avatar {
-  background: linear-gradient(135deg, #ffffff, var(--app-blue-soft));
-  color: var(--app-blue);
-}
-
-.inventory-hero {
-  padding: 18px 20px;
-  border: 1px solid var(--app-border);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--app-shadow-soft);
-}
-
-.inventory-stat-card,
-.inventory-panel {
-  border-color: var(--app-border);
-  box-shadow: var(--app-shadow-soft);
-}
-
-.inventory-stat-card {
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.inventory-stat-card:hover {
-  border-color: var(--app-border-strong);
-  box-shadow: var(--app-shadow);
-  transform: translateY(-1px);
-}
-
-.inventory-search,
-.inventory-filter,
-.inventory-form input,
-.inventory-form select {
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.inventory-search:focus-within,
-.inventory-filter:focus,
-.inventory-form input:focus,
-.inventory-form select:focus {
-  border-color: var(--app-blue);
-  box-shadow: var(--app-focus);
-  background: #ffffff;
-}
-
-.inventory-table th {
-  background: var(--app-surface-soft);
-  color: #475467;
-}
-
-.inventory-table th,
-.inventory-table td {
-  border-bottom-color: #edf2f7;
-}
-
-.inventory-table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
-.inventory-table tbody tr:hover {
-  background: #fbfdff;
-}
-
-.inventory-modal-backdrop {
-  background: rgba(15, 23, 42, 0.34);
-  backdrop-filter: blur(6px);
-}
-
-.inventory-modal {
-  border: 1px solid var(--app-border);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+@media (max-width: 520px) {
+  .inventory-tools {
+    grid-template-columns: 1fr;
+  }
 }

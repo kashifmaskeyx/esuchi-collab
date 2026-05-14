@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator");
-const { sendPasswordResetOtp } = require("../config/mail");
+const { sendOtpEmail } = require("../config/mail");
 
 // ================= TOKEN =================
 const signToken = (id) =>
@@ -48,7 +48,7 @@ exports.requestSignupOtp = async (req, res) => {
       { upsert: true, new: true },
     );
 
-    await sendPasswordResetOtp(email, otp);
+    await sendOtpEmail(email, otp, "signup verification");
 
     res.json({ message: "OTP sent to email" });
   } catch (err) {
@@ -168,10 +168,61 @@ exports.getMe = async (req, res) => {
 //
 // ================= UPDATE PROFILE =================
 //
+exports.requestEmailChangeOtp = async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
+    }
+
+    if (email === req.user.email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Enter a different email address" });
+    }
+
+    const existingUser = await User.findOne({
+      email,
+      _id: { $ne: req.user._id },
+    });
+
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is already in use" });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const otp = String(crypto.randomInt(100000, 1000000));
+    user.pendingEmail = email;
+    user.emailChangeOtpHash = await bcrypt.hash(otp, 10);
+    user.emailChangeOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    await user.save();
+
+    await sendOtpEmail(email, otp, "email verification");
+
+    res.json({
+      success: true,
+      message: "OTP sent to your new email address.",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.updateMe = async (req, res) => {
   try {
     const name = req.body.name?.trim();
     const email = req.body.email?.trim().toLowerCase();
+    const emailOtp = req.body.emailOtp?.trim();
 
     if (!name || !email) {
       return res
@@ -196,8 +247,54 @@ exports.updateMe = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    const emailChanged = email !== user.email;
+
+    if (emailChanged) {
+      if (!emailOtp) {
+        return res.status(400).json({
+          success: false,
+          message: "Enter the OTP sent to your new email address",
+        });
+      }
+
+      if (
+        user.pendingEmail !== email ||
+        !user.emailChangeOtpHash ||
+        !user.emailChangeOtpExpires
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Request an OTP for this email before saving",
+        });
+      }
+
+      if (Date.now() > user.emailChangeOtpExpires.getTime()) {
+        user.pendingEmail = null;
+        user.emailChangeOtpHash = null;
+        user.emailChangeOtpExpires = null;
+        await user.save();
+
+        return res.status(400).json({
+          success: false,
+          message: "OTP expired. Request a new one.",
+        });
+      }
+
+      const isOtpValid = await bcrypt.compare(emailOtp, user.emailChangeOtpHash);
+
+      if (!isOtpValid) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP",
+        });
+      }
+    }
+
     user.name = name;
     user.email = email;
+    user.pendingEmail = null;
+    user.emailChangeOtpHash = null;
+    user.emailChangeOtpExpires = null;
     await user.save();
 
     res.json({

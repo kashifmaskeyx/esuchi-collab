@@ -115,13 +115,25 @@ exports.createOrder = async (req, res) => {
 //admin
 exports.getOrders = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const totalOrders = await Order.countDocuments();
+
     const orders = await Order.find()
       .populate("user", "name email")
-      .populate("orderItems.product", "name price");
+      .populate("orderItems.product", "name price")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: orders.length,
+      totalOrders,
+      totalPages: Math.ceil(totalOrders / limit),
+      currentPage: page,
       data: orders,
     });
   } catch (err) {
@@ -131,13 +143,26 @@ exports.getOrders = async (req, res) => {
 //user
 exports.getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).populate(
-      "orderItems.product",
-      "name price",
-    );
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const query = { user: req.user._id };
+
+    const totalOrders = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
+      .populate("orderItems.product", "name price")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
+      count: orders.length,
+      totalOrders,
+      totalPages: Math.ceil(totalOrders / limit),
+      currentPage: page,
       data: orders,
     });
   } catch (err) {

@@ -7,15 +7,13 @@ const API = axios.create({
   },
 });
 
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const getProductsFromResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data;
   }
 
-  return config;
-});
+  return Array.isArray(data?.products) ? data.products : [];
+};
 
 export const getProductListing = async () => {
   const [productsResponse, inventoryResponse] = await Promise.all([
@@ -24,7 +22,7 @@ export const getProductListing = async () => {
   ]);
 
   return {
-    products: Array.isArray(productsResponse.data) ? productsResponse.data : [],
+    products: getProductsFromResponse(productsResponse.data),
     inventory: inventoryResponse.data?.data ?? [],
   };
 };

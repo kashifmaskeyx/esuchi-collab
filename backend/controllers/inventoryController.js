@@ -42,14 +42,24 @@ exports.createInventory = async (req, res) => {
 //
 exports.getInventories = async (req, res) => {
   try {
-    const inventories = await Inventory.find({ user: req.user._id }).populate(
-      "product",
-      "name price",
-    );
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const totalInventories = await Inventory.countDocuments();
+
+    const inventories = await Inventory.find()
+      .populate("product", "name price")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: inventories.length,
+      totalInventories,
+      totalPages: Math.ceil(totalInventories / limit),
+      currentPage: page,
       data: inventories,
     });
   } catch (err) {
