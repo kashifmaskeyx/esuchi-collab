@@ -22,6 +22,33 @@ export const getSalesOrders = async () => {
   return response.data;
 };
 
+export const getAdminOrders = async () => {
+  const firstResponse = await API.get("/orders");
+  const firstData = firstResponse.data;
+  const totalPages = Number(firstData?.totalPages) || 1;
+  const orders = Array.isArray(firstData?.data) ? [...firstData.data] : [];
+
+  if (totalPages > 1) {
+    const remainingResponses = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        API.get("/orders", { params: { page: index + 2 } }),
+      ),
+    );
+
+    remainingResponses.forEach((response) => {
+      if (Array.isArray(response.data?.data)) {
+        orders.push(...response.data.data);
+      }
+    });
+  }
+
+  return {
+    ...firstData,
+    count: orders.length,
+    data: orders,
+  };
+};
+
 export const createSalesOrder = async (payload) => {
   const response = await API.post("/orders", payload);
   return response.data;

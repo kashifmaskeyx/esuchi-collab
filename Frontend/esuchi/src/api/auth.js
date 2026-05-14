@@ -8,6 +8,11 @@ const API = axios.create({
   },
 });
 
+export const ADMIN_EMAIL = "esuchiinfo@gmail.com";
+
+export const isAdminEmail = (email) =>
+  email?.trim().toLowerCase() === ADMIN_EMAIL;
+
 const getAuthConfig = () => {
   const token = localStorage.getItem("token");
 

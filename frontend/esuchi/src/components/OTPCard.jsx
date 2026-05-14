@@ -7,6 +7,7 @@ import {
   requestSignupOtp,
   verifyOtp,
   verifySignupOtp,
+  isAdminEmail,
 } from "../api/auth";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
@@ -80,7 +81,7 @@ export default function OtpCard() {
           name,
           password,
         });
-        navigate("/dashboard", { replace: true });
+        navigate(isAdminEmail(email) ? "/admin" : "/dashboard", { replace: true });
         return;
       }
 

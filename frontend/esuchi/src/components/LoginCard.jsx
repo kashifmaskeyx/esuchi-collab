@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "../css/LoginCard.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { loginUser } from "../api/auth.js";
+import { isAdminEmail, loginUser } from "../api/auth.js";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
 
@@ -28,12 +28,15 @@ export default function LoginCard() {
     setLoading(true);
     try {
       await loginUser(form);
+      const isAdminLogin = isAdminEmail(form.email);
       saveLoginNotification({
         title: "Login successful",
-        message: "Welcome back. Your dashboard is ready.",
+        message: isAdminLogin
+          ? "Welcome back. Your admin page is ready."
+          : "Welcome back. Your dashboard is ready.",
         tone: "success",
       });
-      navigate("/dashboard", {
+      navigate(isAdminLogin ? "/admin" : "/dashboard", {
         state: {
           openNotifications: true,
         },

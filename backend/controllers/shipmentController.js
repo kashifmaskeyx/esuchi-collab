@@ -63,10 +63,12 @@ exports.createShipment = async (req, res) => {
   try {
     const { supplier, products } = req.body;
 
-    const supplierRecord = await Supplier.findOne({
-      _id: supplier,
-      user: req.user._id,
-    });
+    const supplierQuery =
+      req.user.role === "admin"
+        ? { _id: supplier }
+        : { _id: supplier, user: req.user._id };
+
+    const supplierRecord = await Supplier.findOne(supplierQuery);
 
     if (!supplierRecord) {
       return res
@@ -89,10 +91,12 @@ exports.createShipment = async (req, res) => {
     }
 
     const uniqueProductIds = [...new Set(productIds.map(String))];
-    const userProductsCount = await Product.countDocuments({
-      _id: { $in: uniqueProductIds },
-      user: req.user._id,
-    });
+    const productQuery =
+      req.user.role === "admin"
+        ? { _id: { $in: uniqueProductIds } }
+        : { _id: { $in: uniqueProductIds }, user: req.user._id };
+
+    const userProductsCount = await Product.countDocuments(productQuery);
 
     if (userProductsCount !== uniqueProductIds.length) {
       return res
@@ -122,8 +126,13 @@ exports.updateShipmentStatus = async (req, res) => {
         .json({ success: false, message: "Invalid status value" });
     }
 
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, createdBy: req.user._id };
+
     const shipment = await Shipment.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      query,
       { status },
       { new: true },
     );
@@ -142,10 +151,12 @@ exports.updateShipmentStatus = async (req, res) => {
 // DELETE shipment
 exports.deleteShipment = async (req, res) => {
   try {
-    const shipment = await Shipment.findOneAndDelete({
-      _id: req.params.id,
-      createdBy: req.user._id,
-    });
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, createdBy: req.user._id };
+
+    const shipment = await Shipment.findOneAndDelete(query);
 
     if (!shipment)
       return res
