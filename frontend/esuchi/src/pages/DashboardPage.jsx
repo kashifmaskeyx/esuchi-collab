@@ -275,15 +275,15 @@ export default function DashboardPage() {
       dashboardData.stockMovements.slice(0, 5).map((movement) => ({
         id: movement._id,
         title: movement.product?.name || "Unknown product",
-        subtitle: `${movement.user?.name || "Unknown user"} • ${formatRelativeTime(
+        subtitle: `${movement.user?.name || "Unknown user"} - ${formatRelativeTime(
           movement.createdAt || movement.movementDate,
         )}`,
         status:
           movement.movementType === "IN"
-            ? `Stock In • ${movement.quantity}`
+            ? `Stock In - ${movement.quantity}`
             : movement.movementType === "OUT"
-              ? `Stock Out • ${movement.quantity}`
-              : `Adjusted • ${movement.quantity}`,
+              ? `Stock Out - ${movement.quantity}`
+              : `Adjusted - ${movement.quantity}`,
         tone: getMovementTone(movement.movementType),
       })),
     [dashboardData.stockMovements],
@@ -543,7 +543,7 @@ export default function DashboardPage() {
                     <div>
                       <h4>{item.product?.name || "Unknown product"}</h4>
                       <p>
-                        Minimum {item.minimumStock} • Last updated{" "}
+                        Minimum {item.minimumStock} - Last updated{" "}
                         {formatRelativeTime(item.lastUpdated)}
                       </p>
                     </div>

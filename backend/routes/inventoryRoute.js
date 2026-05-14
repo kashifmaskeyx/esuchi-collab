@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../middlewares/authMiddleware");
 
 const {
   createInventory,
@@ -9,6 +10,8 @@ const {
   updateMinimumStock,
   deleteInventory,
 } = require("../controllers/inventoryController");
+
+router.use(protect);
 
 router.post("/", createInventory);
 router.get("/", getInventories);

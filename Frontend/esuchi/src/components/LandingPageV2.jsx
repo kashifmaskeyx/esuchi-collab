@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import logo from "../assets/logo.png";
+import warehouseHero from "../assets/ware.jpg";
 import "../css/LandingPageV2.css";
 
 const featureCards = [
@@ -158,7 +159,10 @@ export default function LandingPageV2() {
       </header>
 
       <main className="landing-main" id="top">
-        <section className="landing-hero">
+        <section
+          className="landing-hero"
+          style={{ backgroundImage: `url(${warehouseHero})` }}
+        >
           <div className="landing-hero-copy">
             <h1>
               Best Inventory and Logistics Management System in Nepal
@@ -183,11 +187,10 @@ export default function LandingPageV2() {
         <section className="landing-section" id="features">
           <div className="landing-section-heading">
             <span className="landing-section-tag">Features</span>
-            <h2>Everything the landing page should quickly tell a new visitor</h2>
+            <h2>Inventory, products, and shipment work in one clear flow</h2>
             <p>
-              The platform already covers the core workflows most operations
-              teams expect: products, inventory, shipments, analytics signals,
-              and secure account access.
+              eSuchi gives growing teams a focused workspace for stock counts,
+              product records, supplier activity, and delivery progress.
             </p>
           </div>
 
@@ -215,10 +218,10 @@ export default function LandingPageV2() {
           <div className="landing-overview-card">
             <div className="landing-section-heading compact">
               <span className="landing-section-tag">Overview</span>
-              <h2>Show the product value before asking for signup</h2>
+              <h2>Built for daily operations, not spreadsheet chasing</h2>
               <p>
-                This landing page now explains what the app does, how it helps,
-                and where visitors can go next.
+                Keep every stock update, shipment status, and product decision
+                visible before small issues turn into slowdowns.
               </p>
             </div>
 
@@ -287,10 +290,10 @@ export default function LandingPageV2() {
         <section className="landing-cta-section">
           <div>
             <span className="landing-section-tag">Start Now</span>
-            <h2>Turn the landing page into a real entry point for the app.</h2>
+            <h2>Start managing your inventory with more confidence.</h2>
             <p>
-              Visitors can now understand the product, scroll through the core
-              sections, and jump straight into registration or the dashboard.
+              Create an account, bring your products into one place, and keep
+              the team moving with cleaner stock and shipment visibility.
             </p>
           </div>
 

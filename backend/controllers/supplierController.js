@@ -18,6 +18,7 @@ exports.createSupplier = async (req, res) => {
       contactPerson,
       phone,
       email,
+      user: req.user._id,
     });
 
     res.status(201).json({
@@ -65,7 +66,10 @@ exports.getSuppliers = async (req, res) => {
 // GET single supplier
 exports.getSupplierById = async (req, res) => {
   try {
-    const supplier = await Supplier.findById(req.params.id);
+    const supplier = await Supplier.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!supplier) {
       return res.status(404).json({
@@ -91,7 +95,10 @@ exports.updateSupplier = async (req, res) => {
   try {
     const { name, contactPerson, phone, email } = req.body;
 
-    const supplier = await Supplier.findById(req.params.id);
+    const supplier = await Supplier.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!supplier) {
       return res.status(404).json({
@@ -123,7 +130,10 @@ exports.updateSupplier = async (req, res) => {
 // DELETE supplier
 exports.deleteSupplier = async (req, res) => {
   try {
-    const supplier = await Supplier.findByIdAndDelete(req.params.id);
+    const supplier = await Supplier.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!supplier) {
       return res.status(404).json({
