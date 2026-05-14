@@ -209,6 +209,11 @@
   overflow-x: auto;
 }
 
+.products-table-card .pagination {
+  padding: 14px;
+  border-top: 1px solid #ececec;
+}
+
 .products-table-full {
   width: 100%;
   min-width: 760px;

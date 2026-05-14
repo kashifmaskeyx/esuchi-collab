@@ -6,6 +6,7 @@ const {
   login,
   getMe,
   updateMe,
+  requestEmailChangeOtp,
   changePassword,
   logout,
   requestSignupOtp,
@@ -56,6 +57,12 @@ router.post(
 // ================= AUTH USER =================
 //
 router.get("/me", protect, getMe);
+router.post(
+  "/me/email-otp",
+  protect,
+  [body("email").isEmail()],
+  requestEmailChangeOtp,
+);
 router.put(
   "/me",
   protect,
