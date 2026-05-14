@@ -145,6 +145,8 @@
     left: 0;
     right: auto;
   }
+}
+
 :root {
   color-scheme: light;
   --app-blue: #235c94;
