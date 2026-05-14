@@ -20,6 +20,7 @@ import {
   updateInventoryStock,
   updateProduct,
 } from "../api/products";
+import Pagination from "./Pagination";
 import "../css/Products.css";
 
 const getProductCode = (product, inventory) => {
@@ -40,12 +41,15 @@ const emptyForm = {
   price: "",
 };
 
+const PRODUCTS_PAGE_SIZE = 6;
+
 export default function Products() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [listingData, setListingData] = useState({ products: [], inventory: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -81,6 +85,10 @@ export default function Products() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categoryFilter, searchTerm]);
 
   const inventoryByProductId = useMemo(
     () =>
@@ -181,6 +189,20 @@ export default function Products() {
       return matchesCategory && matchesSearch;
     });
   }, [categoryFilter, productRows, searchTerm]);
+
+  const totalPages = Math.ceil(filteredRows.length / PRODUCTS_PAGE_SIZE);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * PRODUCTS_PAGE_SIZE;
+
+    return filteredRows.slice(startIndex, startIndex + PRODUCTS_PAGE_SIZE);
+  }, [currentPage, filteredRows]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -383,7 +405,7 @@ export default function Products() {
                     </td>
                   </tr>
                 ) : filteredRows.length ? (
-                  filteredRows.map((product) => (
+                  paginatedRows.map((product) => (
                     <tr
                       key={product.id}
                       className={product.isLowStock ? "product-row-low-stock" : ""}
@@ -435,6 +457,16 @@ export default function Products() {
               </tbody>
             </table>
           </div>
+
+          {!isLoading && !errorMessage && filteredRows.length ? (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredRows.length}
+              pageSize={PRODUCTS_PAGE_SIZE}
+              onPageChange={setCurrentPage}
+              itemLabel="products"
+            />
+          ) : null}
         </section>
 
         {isModalOpen ? (
