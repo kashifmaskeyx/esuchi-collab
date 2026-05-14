@@ -53,6 +53,7 @@
 }
 
 .topbar-icon-btn {
+  position: relative;
   width: 40px;
   height: 40px;
   border: 1px solid #ded9d3;
