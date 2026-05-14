@@ -1,9 +1,19 @@
 .dashboard-card {
-  background: #ffffff;
-  border: 1px solid #d8d8d8;
-  border-radius: 18px;
-  padding: 14px 14px 16px;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08), 0 10px 16px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--app-shadow-soft);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dashboard-card:hover {
+  border-color: var(--app-border-strong);
+  box-shadow: var(--app-shadow);
+  transform: translateY(-1px);
 }
 
 .dashboard-card-head {
@@ -26,7 +36,7 @@
 }
 
 .dashboard-card-icon {
-  color: #111111;
+  color: var(--app-blue);
 }
 
 .dashboard-card-head h3 {
@@ -34,13 +44,13 @@
   font-size: 0.95rem;
   font-weight: 800;
   line-height: 1.2;
-  color: #111111;
+  color: var(--app-text);
 }
 
 .card-action-btn {
   border: none;
-  background: #efefef;
-  color: #111111;
+  background: var(--app-blue-soft);
+  color: var(--app-blue);
   font-size: 0.82rem;
   font-weight: 700;
   padding: 6px 12px;

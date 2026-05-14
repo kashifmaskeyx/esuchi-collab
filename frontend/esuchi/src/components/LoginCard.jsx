@@ -40,6 +40,7 @@ export default function LoginCard() {
           <img src={logo} alt="eSuchi logo" className="login-logo" />
           <h2 className="login-title">Welcome</h2>
           <p className="login-subtitle">Please enter your details</p>
+          {loginMessage ? <p className="login-success">{loginMessage}</p> : null}
 
           <form onSubmit={handleSubmit} className="login-form">
             <input

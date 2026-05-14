@@ -12,6 +12,8 @@ import Inventory from "./components/Inventory";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./components/ProfilePage";
+import SalesOrders from "./components/SalesOrders";
+import StaffRoles from "./components/StaffRoles";
 
 const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
@@ -37,10 +39,11 @@ function App() {
       <Route element={<AppShell />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/inventory" element={<Inventory />} />
-      <Route path="/orders" element={<BlankPage />} />
+      <Route path="/orders" element={<SalesOrders />} />
       <Route path="/products" element={<Products />} />
       <Route path="/customers" element={<BlankPage />} />
       <Route path="/shipment" element={<Shipping />} />
+      <Route path="/staff" element={<StaffRoles />} />
       <Route path="/finances" element={<BlankPage />} />
       <Route path="/analytics" element={<BlankPage />} />
       <Route path="/marketing" element={<BlankPage />} />
