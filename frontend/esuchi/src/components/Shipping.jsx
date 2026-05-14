@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
@@ -23,6 +23,15 @@ import {
   updateShipmentStatus,
 } from "../api/shipments";
 import "../css/Shipping.css";
+
+const readLoginNotification = () => {
+  try {
+    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    return storedNotification ? JSON.parse(storedNotification) : null;
+  } catch {
+    return null;
+  }
+};
 
 const formatDate = (value) => {
   if (!value) {
@@ -57,6 +66,11 @@ export default function Shipping() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const userInitials = useMemo(() => getUserInitials(), []);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
+  const [loginNotification, setLoginNotification] = useState(() =>
+    readLoginNotification(),
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [shipments, setShipments] = useState([]);
   const [products, setProducts] = useState([]);
@@ -120,6 +134,24 @@ export default function Shipping() {
     setShipments(response.data ?? []);
   };
 
+  useEffect(() => {
+    if (!showNotifications) {
+      return undefined;
+    }
+
+    const closeNotifications = (event) => {
+      if (!notificationRef.current?.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeNotifications);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeNotifications);
+    };
+  }, [showNotifications]);
+
   const filteredShipments = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -182,6 +214,32 @@ export default function Shipping() {
     ],
     [shipments],
   );
+
+  const notifications = useMemo(() => {
+    const shipmentNotifications = shipments
+      .filter((shipment) => ["pending", "in_transit"].includes(shipment.status))
+      .slice(0, 5)
+      .map((shipment) => ({
+        id: `shipment-${shipment._id}`,
+        title: "Shipment update",
+        message: `${shipment.shipmentId || "Shipment"} is ${formatStatusLabel(
+          shipment.status,
+        ).toLowerCase()}.`,
+        tone: shipment.status === "in_transit" ? "success" : "danger",
+      }));
+
+    return [
+      ...(loginNotification
+        ? [{ id: "login-success", ...loginNotification }]
+        : []),
+      ...shipmentNotifications,
+    ];
+  }, [loginNotification, shipments]);
+
+  const clearLoginNotification = () => {
+    sessionStorage.removeItem("esuchiLoginNotification");
+    setLoginNotification(null);
+  };
 
   const handleCreateFormChange = (event) => {
     const { name, value } = event.target;
@@ -311,9 +369,53 @@ export default function Shipping() {
           </div>
 
           <div className="shipping-topbar-right">
-            <button type="button" className="shipping-icon-btn" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
+            <div className="notification-box-wrap" ref={notificationRef}>
+              <button
+                type="button"
+                className="shipping-icon-btn notification-trigger"
+                aria-label="Notifications"
+                aria-expanded={showNotifications}
+                onClick={() => setShowNotifications((current) => !current)}
+              >
+                <Bell size={18} />
+                {notifications.length ? (
+                  <span className="notification-count">
+                    {notifications.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {showNotifications ? (
+                <div className="notification-box" role="status">
+                  <div className="notification-box-head">
+                    <h2>Notifications</h2>
+                    {loginNotification ? (
+                      <button type="button" onClick={clearLoginNotification}>
+                        Clear login
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length ? (
+                    <div className="notification-list">
+                      {notifications.map((notification) => (
+                        <article
+                          key={notification.id}
+                          className={`notification-item ${notification.tone}`}
+                        >
+                          <h3>{notification.title}</h3>
+                          <p>{notification.message}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="notification-empty">
+                      No new notifications.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
             <button
               type="button"

@@ -6,6 +6,10 @@ import { loginUser } from "../api/auth.js";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
 
+const saveLoginNotification = (notification) => {
+  sessionStorage.setItem("esuchiLoginNotification", JSON.stringify(notification));
+};
+
 export default function LoginCard() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -24,7 +28,16 @@ export default function LoginCard() {
     setLoading(true);
     try {
       await loginUser(form);
-      navigate("/dashboard");
+      saveLoginNotification({
+        title: "Login successful",
+        message: "Welcome back. Your dashboard is ready.",
+        tone: "success",
+      });
+      navigate("/dashboard", {
+        state: {
+          openNotifications: true,
+        },
+      });
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
