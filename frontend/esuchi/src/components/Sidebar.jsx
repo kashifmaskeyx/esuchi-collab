@@ -4,7 +4,9 @@ import logo from "../assets/logo.png";
 import logoIn from "../assets/LogoIn.png";
 import {
   LayoutDashboard,
+  ShieldCheck,
   Package,
+  ShoppingCart,
   Truck,
   Boxes,
   LogOut,
@@ -18,7 +20,9 @@ const mainItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Inventory", icon: Boxes, path: "/inventory" },
   { label: "Products", icon: Package, path: "/products" },
+  { label: "Sales Orders", icon: ShoppingCart, path: "/orders" },
   { label: "Shipment", icon: Truck, path: "/shipment" },
+  { label: "Staff & Roles", icon: ShieldCheck, path: "/staff" },
 ];
 
 function Sidebar({ isOpen, onClose, onToggle }) {
