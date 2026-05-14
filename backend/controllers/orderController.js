@@ -30,8 +30,14 @@ exports.createOrder = async (req, res) => {
         });
       }
 
-      const product = await Product.findById(item.product);
-      const inventory = await Inventory.findOne({ product: item.product });
+      const product = await Product.findOne({
+        _id: item.product,
+        user: req.user._id,
+      });
+      const inventory = await Inventory.findOne({
+        product: item.product,
+        user: req.user._id,
+      });
 
       if (!product) {
         return res.status(404).json({
@@ -81,12 +87,15 @@ exports.createOrder = async (req, res) => {
 
     // update stock
     for (let item of itemsWithPrice) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { quantity: -item.quantity },
-      });
+      await Product.findOneAndUpdate(
+        { _id: item.product, user: req.user._id },
+        {
+          $inc: { quantity: -item.quantity },
+        },
+      );
 
       await Inventory.findOneAndUpdate(
-        { product: item.product },
+        { product: item.product, user: req.user._id },
         {
           $inc: { currentStock: -item.quantity },
           lastUpdated: Date.now(),
@@ -170,8 +179,8 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
       { status },
       { new: true },
     );
@@ -191,7 +200,10 @@ exports.updateOrderStatus = async (req, res) => {
 //amin delete
 exports.deleteOrder = async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const order = await Order.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });

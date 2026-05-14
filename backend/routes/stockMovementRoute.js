@@ -10,7 +10,9 @@ const {
 
 const { protect } = require("../middlewares/authMiddleware");
 
-router.post("/", protect, createMovement);
+router.use(protect);
+
+router.post("/", createMovement);
 router.get("/", getMovements);
 router.get("/product/:productId", getMovementsByProduct);
 router.delete("/:id", deleteMovement);

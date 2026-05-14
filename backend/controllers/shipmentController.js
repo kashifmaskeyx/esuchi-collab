@@ -1,5 +1,7 @@
 // controllers/shipmentController.js
 const Shipment = require("../models/shipmentModel");
+const Product = require("../models/productModel");
+const Supplier = require("../models/supplierModel");
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
@@ -38,7 +40,10 @@ exports.getShipments = async (req, res) => {
 // GET single shipment
 exports.getShipmentById = async (req, res) => {
   try {
-    const shipment = await Shipment.findById(req.params.id)
+    const shipment = await Shipment.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    })
       .populate("products.product", "name code unit")
       .populate("createdBy", "name");
 
@@ -53,9 +58,48 @@ exports.getShipmentById = async (req, res) => {
   }
 };
 
-// POST create shipment (admin only)
+// POST create shipment
 exports.createShipment = async (req, res) => {
   try {
+    const { supplier, products } = req.body;
+
+    const supplierRecord = await Supplier.findOne({
+      _id: supplier,
+      user: req.user._id,
+    });
+
+    if (!supplierRecord) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Supplier not found" });
+    }
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "At least one product is required" });
+    }
+
+    const productIds = products.map((item) => item.product).filter(Boolean);
+
+    if (productIds.length !== products.length) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Each product entry is required" });
+    }
+
+    const uniqueProductIds = [...new Set(productIds.map(String))];
+    const userProductsCount = await Product.countDocuments({
+      _id: { $in: uniqueProductIds },
+      user: req.user._id,
+    });
+
+    if (userProductsCount !== uniqueProductIds.length) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
     const shipment = await Shipment.create({
       ...req.body,
       createdBy: req.user._id,
@@ -78,8 +122,8 @@ exports.updateShipmentStatus = async (req, res) => {
         .json({ success: false, message: "Invalid status value" });
     }
 
-    const shipment = await Shipment.findByIdAndUpdate(
-      req.params.id,
+    const shipment = await Shipment.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { status },
       { new: true },
     );
@@ -95,10 +139,13 @@ exports.updateShipmentStatus = async (req, res) => {
   }
 };
 
-// DELETE shipment (admin only)
+// DELETE shipment
 exports.deleteShipment = async (req, res) => {
   try {
-    const shipment = await Shipment.findByIdAndDelete(req.params.id);
+    const shipment = await Shipment.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
 
     if (!shipment)
       return res

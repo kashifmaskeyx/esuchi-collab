@@ -1,4 +1,5 @@
 const Inventory = require("../models/inventoryModel");
+const Product = require("../models/productModel");
 
 //
 // CREATE inventory (usually when product is created)
@@ -7,7 +8,16 @@ exports.createInventory = async (req, res) => {
   try {
     const { product, currentStock, minimumStock } = req.body;
 
-    const existing = await Inventory.findOne({ product });
+    const productRecord = await Product.findOne({
+      _id: product,
+      user: req.user._id,
+    });
+
+    if (!productRecord) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const existing = await Inventory.findOne({ product, user: req.user._id });
     if (existing) {
       return res
         .status(400)
@@ -16,6 +26,7 @@ exports.createInventory = async (req, res) => {
 
     const inventory = await Inventory.create({
       product,
+      user: req.user._id,
       currentStock,
       minimumStock,
     });
@@ -61,10 +72,10 @@ exports.getInventories = async (req, res) => {
 //
 exports.getInventoryById = async (req, res) => {
   try {
-    const inventory = await Inventory.findById(req.params.id).populate(
-      "product",
-      "name price",
-    );
+    const inventory = await Inventory.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    }).populate("product", "name price");
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -83,7 +94,10 @@ exports.updateStock = async (req, res) => {
   try {
     const { currentStock } = req.body;
 
-    const inventory = await Inventory.findById(req.params.id);
+    const inventory = await Inventory.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -107,7 +121,10 @@ exports.updateMinimumStock = async (req, res) => {
   try {
     const { minimumStock } = req.body;
 
-    const inventory = await Inventory.findById(req.params.id);
+    const inventory = await Inventory.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -129,7 +146,10 @@ exports.updateMinimumStock = async (req, res) => {
 //
 exports.deleteInventory = async (req, res) => {
   try {
-    const inventory = await Inventory.findByIdAndDelete(req.params.id);
+    const inventory = await Inventory.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
