@@ -63,7 +63,7 @@ function Sidebar({ isOpen, onClose, onToggle }) {
                   }
                   onClick={handleNavClick}
                 >
-                  <Icon size={17} />
+                  {React.createElement(Icon, { size: 17 })}
                   <span>{label}</span>
                 </NavLink>
               </li>

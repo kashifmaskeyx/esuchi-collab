@@ -335,3 +335,74 @@
     font-size: 16px;
   }
 }
+
+.login-page {
+  background:
+    radial-gradient(circle at top left, rgba(30, 58, 138, 0.08), transparent 26rem),
+    #f5f8fb;
+}
+
+.login-left {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 18px 0 44px rgba(16, 24, 40, 0.08);
+  z-index: 1;
+}
+
+.login-form-wrapper {
+  padding: 10px 0;
+}
+
+.login-input {
+  min-height: 46px;
+  border-color: var(--app-border);
+  background: rgba(255, 255, 255, 0.92);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.login-input:focus {
+  border-color: var(--app-blue);
+  box-shadow: var(--app-focus);
+  background: #ffffff;
+}
+
+.login-btn {
+  min-height: 46px;
+  background: linear-gradient(135deg, var(--app-blue), var(--app-blue-strong));
+  box-shadow: 0 12px 26px rgba(35, 92, 148, 0.24);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.login-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(35, 92, 148, 0.28);
+}
+
+.login-social-btn {
+  min-height: 44px;
+  border-color: var(--app-border);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.login-social-btn:hover {
+  border-color: var(--app-border-strong);
+  transform: translateY(-1px);
+}
+
+.login-right {
+  background-size: cover;
+}
+
+.login-right-overlay {
+  background:
+    linear-gradient(90deg, rgba(5, 20, 43, 0.28), rgba(5, 20, 43, 0.08)),
+    rgba(10, 25, 60, 0.18);
+}

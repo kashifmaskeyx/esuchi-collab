@@ -50,8 +50,8 @@ select {
   justify-content: space-between;
   gap: 24px;
   padding: 18px 5vw;
-  backdrop-filter: blur(14px);
-  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid rgba(229, 231, 235, 0.9);
 }
 
@@ -158,9 +158,26 @@ select {
 }
 
 .landing-hero {
+  position: relative;
   display: flex;
-  justify-content: center;
-  padding: 68px 0 44px;
+  align-items: flex-end;
+  min-height: min(680px, calc(100vh - 106px));
+  justify-content: flex-start;
+  overflow: hidden;
+  padding: 72px clamp(20px, 6vw, 68px);
+  border-radius: 28px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--landing-shadow);
+}
+
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 24, 52, 0.78) 0%, rgba(8, 24, 52, 0.48) 46%, rgba(8, 24, 52, 0.08) 100%),
+    linear-gradient(0deg, rgba(8, 24, 52, 0.42), rgba(8, 24, 52, 0.05));
 }
 
 .landing-section-tag {
@@ -187,10 +204,12 @@ select {
 }
 
 .landing-hero-copy {
-  width: min(760px, 100%);
+  position: relative;
+  z-index: 1;
+  width: min(680px, 100%);
   border-radius: 0;
-  padding: 0 20px;
-  text-align: center;
+  padding: 0;
+  text-align: left;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -204,6 +223,11 @@ select {
   font-size: clamp(2rem, 5vw, 3.75rem);
   line-height: 1.08;
   letter-spacing: -0.04em;
+}
+
+.landing-hero-copy h1 {
+  color: #ffffff;
+  text-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
 }
 
 .landing-section-heading h2,
@@ -225,8 +249,14 @@ select {
 
 .landing-hero-copy > p {
   max-width: 600px;
-  margin: 0 auto;
-  font-size: 1rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 1.02rem;
+}
+
+.landing-hero-actions {
+  justify-content: flex-start;
+  margin-top: 26px;
 }
 
 .hero-btn {
@@ -275,8 +305,21 @@ select {
 .landing-feature-card,
 .landing-workflow-card,
 .landing-faq-card {
-  border-radius: 22px;
+  border-radius: 18px;
   padding: 24px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.landing-feature-card:hover,
+.landing-workflow-card:hover,
+.landing-faq-card:hover,
+.landing-overview-stats article:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.1);
+  transform: translateY(-2px);
 }
 
 .landing-feature-icon,
@@ -403,10 +446,17 @@ select {
 
   .landing-hero-copy {
     padding: 0;
+    text-align: left;
   }
 
   .landing-hero-copy h1 {
     max-width: none;
+  }
+
+  .landing-hero {
+    min-height: 560px;
+    border-radius: 22px;
+    padding: 46px 22px;
   }
 
   .landing-overview-card,
