@@ -19,6 +19,7 @@ const {
   requestPasswordResetOtp,
   verifyPasswordResetOtp,
   resetPasswordAfterOtpVerified,
+  adminResetUserPassword,
 } = require("../controllers/passwordResetController");
 
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
@@ -104,6 +105,16 @@ router.post(
     body("confirmPassword").notEmpty(),
   ],
   resetPasswordAfterOtpVerified,
+);
+
+//
+// ================= ADMIN RESET USER PASSWORD =================
+//
+router.post(
+  "/admin/reset-user-password",
+  protect,
+  adminOnly,
+  adminResetUserPassword,
 );
 
 module.exports = router;

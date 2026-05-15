@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
 const { sendPasswordResetOtp } = require("../config/mail");
+const createAuditLog = require("../utils/auditLogger");
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const PASSWORD_RESET_WINDOW_MS = 15 * 60 * 1000;
@@ -143,6 +144,47 @@ exports.resetPasswordAfterOtpVerified = async (req, res) => {
     res.json({
       message:
         "Password reset successful. You can log in with your new password.",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ================= ADMIN RESET USER PASSWORD =================
+exports.adminResetUserPassword = async (req, res) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    if (!userId?.trim() || !newPassword?.trim()) {
+      return res
+        .status(400)
+        .json({ message: "User ID and new password are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.password = newPassword;
+    user.passwordResetOtpHash = null;
+    user.passwordResetOtpExpires = null;
+    user.passwordResetAllowedUntil = null;
+    await user.save();
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "ADMIN_RESET_USER_PASSWORD",
+      entity: "User",
+      entityId: user._id,
+      oldData: null,
+      newData: { email: user.email, name: user.name },
+      req,
+    });
+
+    res.json({
+      success: true,
+      message: `Password for user ${user.email} has been reset successfully.`,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

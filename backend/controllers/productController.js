@@ -1,4 +1,5 @@
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
 
 // Create product
 exports.createProduct = async (req, res) => {
@@ -7,6 +8,16 @@ exports.createProduct = async (req, res) => {
       ...req.body,
       user: req.user._id,
     });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_PRODUCT",
+      entity: "Product",
+      entityId: product._id,
+      newData: product.toObject ? product.toObject() : product,
+      req,
+    });
+
     res.status(201).json(product);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -40,7 +51,23 @@ exports.bulkCreateProducts = async (req, res) => {
       };
     });
 
-    const createdProducts = await Product.insertMany(formattedProducts);
+    const createdProducts = await Product.insertMany(
+      formattedProducts.map((product) => ({
+        ...product,
+        user: req.user._id,
+      })),
+    );
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "BULK_CREATE_PRODUCTS",
+      entity: "Product",
+      newData: {
+        totalProducts: createdProducts.length,
+        createdIds: createdProducts.map((product) => product._id),
+      },
+      req,
+    });
 
     res.status(201).json({
       success: true,
@@ -90,8 +117,20 @@ exports.getProducts = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
+    const oldProduct = await Product.findById(req.params.id);
+
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_PRODUCT",
+      entity: "Product",
+      entityId: updated._id,
+      oldData: oldProduct ? oldProduct.toObject() : null,
+      newData: updated ? updated.toObject() : null,
+      req,
     });
 
     res.json(updated);
@@ -99,11 +138,19 @@ exports.updateProduct = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 // Delete product
 exports.deleteProduct = async (req, res) => {
   try {
-    await Product.findByIdAndDelete(req.params.id);
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_PRODUCT",
+      entity: "Product",
+      entityId: deleted._id,
+      oldData: deleted ? deleted.toObject() : null,
+      req,
+    });
 
     res.json({ message: "Product deleted" });
   } catch (error) {
