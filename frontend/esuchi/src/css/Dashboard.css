@@ -723,6 +723,29 @@
   color: #b45309;
 }
 
+.admin-role-select {
+  min-width: 112px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 7px 9px;
+}
+
+.admin-role-select:focus {
+  outline: none;
+  border-color: var(--app-blue);
+  box-shadow: var(--app-focus);
+}
+
+.admin-role-select:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .admin-kpi-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -835,6 +858,44 @@
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.admin-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.admin-filter-control {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.admin-filter-control span {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.admin-filter-control select {
+  min-height: 38px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.admin-filter-control select:focus {
+  outline: none;
+  border-color: var(--app-blue);
+  box-shadow: var(--app-focus);
 }
 
 .admin-inline-action {

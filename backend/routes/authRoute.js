@@ -8,6 +8,8 @@ const {
   updateMe,
   requestEmailChangeOtp,
   changePassword,
+  getUsers,
+  updateUserRole,
   logout,
   requestSignupOtp,
   verifySignupOtp,
@@ -19,7 +21,7 @@ const {
   resetPasswordAfterOtpVerified,
 } = require("../controllers/passwordResetController");
 
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, adminOnly } = require("../middlewares/authMiddleware");
 
 //
 // ================= SIGNUP (OTP FLOW) =================
@@ -56,6 +58,8 @@ router.post(
 //
 // ================= AUTH USER =================
 //
+router.get("/users", protect, adminOnly, getUsers);
+router.patch("/users/:id/role", protect, adminOnly, updateUserRole);
 router.get("/me", protect, getMe);
 router.post(
   "/me/email-otp",

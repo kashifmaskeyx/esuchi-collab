@@ -130,6 +130,28 @@ export const updateCurrentUser = async (data) => {
   }
 };
 
+export const getAdminUsers = async () => {
+  try {
+    const response = await API.get("/auth/users", getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load users" };
+  }
+};
+
+export const updateAdminUserRole = async (id, role) => {
+  try {
+    const response = await API.patch(
+      `/auth/users/${id}/role`,
+      { role },
+      getAuthConfig(),
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to update user role" };
+  }
+};
+
 export const requestEmailChangeOtp = async (data) => {
   try {
     const response = await API.post("/auth/me/email-otp", data, getAuthConfig());

@@ -317,6 +317,11 @@
   color: #dc2626;
 }
 
+.ops-row-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .ops-permission-list {
   display: flex;
   gap: 6px;
