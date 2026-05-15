@@ -199,7 +199,7 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, user: req.user._id },
+      query,
       { status },
       { new: true },
     );
@@ -225,10 +225,12 @@ exports.updateOrderStatus = async (req, res) => {
 //amin delete
 exports.deleteOrder = async (req, res) => {
   try {
-    const order = await Order.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, user: req.user._id };
+
+    const order = await Order.findOneAndDelete(query);
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });

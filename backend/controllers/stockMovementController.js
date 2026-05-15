@@ -11,7 +11,10 @@ exports.createMovement = async (req, res) => {
     const { product, movementType, quantity, movementDate, confirmLowStock } =
       req.body;
 
-    const inventory = await Inventory.findOne({ product, user: req.user._id });
+    const inventoryQuery =
+      req.user.role === "admin" ? { product } : { product, user: req.user._id };
+
+    const inventory = await Inventory.findOne(inventoryQuery);
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -25,10 +28,12 @@ exports.createMovement = async (req, res) => {
         .json({ message: "Quantity must be a number greater than 0" });
     }
 
-    const productRecord = await Product.findOne({
-      _id: product,
-      user: req.user._id,
-    });
+    const productQuery =
+      req.user.role === "admin"
+        ? { _id: product }
+        : { _id: product, user: req.user._id };
+
+    const productRecord = await Product.findOne(productQuery);
 
     if (!productRecord) {
       return res.status(404).json({ message: "Product not found" });

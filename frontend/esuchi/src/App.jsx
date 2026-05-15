@@ -14,6 +14,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./components/ProfilePage";
 import SalesOrders from "./components/SalesOrders";
 import StaffRoles from "./components/StaffRoles";
+import AdminDashboard from "./components/AdminDashboard";
 
 const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
@@ -34,6 +35,7 @@ function App() {
   <Route path="/otp" element={<OtpCard />} />
   <Route path="/reset-password" element={<ResetPasswordCard />} />
   <Route path="/" element={<LandingPage />} />
+  <Route path="/admin" element={<AdminDashboard />} />
 
   <Route element={<ProtectedRoute />}>
       <Route element={<AppShell />}>

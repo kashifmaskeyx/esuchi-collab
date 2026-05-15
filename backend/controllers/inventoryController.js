@@ -104,10 +104,12 @@ exports.updateStock = async (req, res) => {
   try {
     const { currentStock } = req.body;
 
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, user: req.user._id };
+
+    const inventory = await Inventory.findOne(query);
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -143,10 +145,12 @@ exports.updateMinimumStock = async (req, res) => {
   try {
     const { minimumStock } = req.body;
 
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, user: req.user._id };
+
+    const inventory = await Inventory.findOne(query);
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -180,10 +184,12 @@ exports.updateMinimumStock = async (req, res) => {
 //
 exports.deleteInventory = async (req, res) => {
   try {
-    const inventory = await Inventory.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, user: req.user._id };
+
+    const inventory = await Inventory.findOneAndDelete(query);
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
