@@ -9,15 +9,16 @@ const {
   deleteSupplier,
 } = require("../controllers/supplierController");
 
-const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const { protect } = require("../middlewares/authMiddleware");
 
-// Admin only
-router.post("/", protect, adminOnly, createSupplier);
-router.put("/:id", protect, adminOnly, updateSupplier);
-router.delete("/:id", protect, adminOnly, deleteSupplier);
+router.use(protect);
+
+router.post("/", createSupplier);
+router.put("/:id", updateSupplier);
+router.delete("/:id", deleteSupplier);
 
 // All logged-in users
-router.get("/", protect, getSuppliers);
-router.get("/:id", protect, getSupplierById);
+router.get("/", getSuppliers);
+router.get("/:id", getSupplierById);
 
 module.exports = router;

@@ -17,6 +17,14 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+const getProductsFromResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return Array.isArray(data?.products) ? data.products : [];
+};
+
 export const getInventoryPageData = async () => {
   const [productsResponse, inventoryResponse, movementsResponse] = await Promise.all([
     API.get("/products"),
@@ -25,7 +33,7 @@ export const getInventoryPageData = async () => {
   ]);
 
   return {
-    products: Array.isArray(productsResponse.data) ? productsResponse.data : [],
+    products: getProductsFromResponse(productsResponse.data),
     inventory: inventoryResponse.data?.data ?? [],
     movements: movementsResponse.data?.data ?? [],
   };

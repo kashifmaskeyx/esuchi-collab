@@ -12,6 +12,7 @@ const signToken = (id) =>
   });
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "esuchiinfo@gmail.com").toLowerCase();
 
 //
 // ================= SIGNUP OTP =================
@@ -163,6 +164,86 @@ exports.login = async (req, res) => {
 //
 exports.getMe = async (req, res) => {
   res.json({ success: true, user: req.user });
+};
+
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("name email role isActive isVerified createdAt updatedAt")
+      .sort("-createdAt");
+
+    res.json({
+      success: true,
+      count: users.length,
+      data: users.map((user) => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role:
+          user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL
+            ? "admin"
+            : user.role,
+        status: user.isActive ? "active" : "suspended",
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateUserRole = async (req, res) => {
+  try {
+    const role = req.body.role?.trim().toLowerCase();
+    const allowedRoles = ["user", "staff", "admin"];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Role must be user, staff, or admin",
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.email?.toLowerCase() === ADMIN_EMAIL && role !== "admin") {
+      return res.status(400).json({
+        success: false,
+        message: "Primary admin must keep the admin role",
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "User role updated",
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role:
+          user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL
+            ? "admin"
+            : user.role,
+        status: user.isActive ? "active" : "suspended",
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 //

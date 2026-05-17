@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
@@ -15,6 +15,15 @@ import {
   updateCurrentUser,
 } from "../api/auth";
 import "../css/ProfilePage.css";
+
+const readLoginNotification = () => {
+  try {
+    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    return storedNotification ? JSON.parse(storedNotification) : null;
+  } catch {
+    return null;
+  }
+};
 
 const storedProfile = () => {
   try {
@@ -35,6 +44,11 @@ export default function ProfilePage() {
   const outletContext = useOutletContext();
   const sidebarOpen = outletContext?.sidebarOpen ?? false;
   const profile = useMemo(() => storedProfile(), []);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
+  const [loginNotification, setLoginNotification] = useState(() =>
+    readLoginNotification(),
+  );
   const [savedProfile, setSavedProfile] = useState({
     name: profile.name || "Admin User",
     email: profile.email || "admin@esuchi.com",
@@ -69,6 +83,36 @@ export default function ProfilePage() {
   const emailChanged =
     accountForm.email.trim().toLowerCase() !==
     savedProfile.email.trim().toLowerCase();
+  const notifications = useMemo(
+    () =>
+      loginNotification
+        ? [{ id: "login-success", ...loginNotification }]
+        : [],
+    [loginNotification],
+  );
+
+  const clearLoginNotification = () => {
+    sessionStorage.removeItem("esuchiLoginNotification");
+    setLoginNotification(null);
+  };
+
+  useEffect(() => {
+    if (!showNotifications) {
+      return undefined;
+    }
+
+    const closeNotifications = (event) => {
+      if (!notificationRef.current?.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeNotifications);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeNotifications);
+    };
+  }, [showNotifications]);
 
   const handleAccountChange = (event) => {
     const { name, value } = event.target;
@@ -213,9 +257,53 @@ export default function ProfilePage() {
           </div>
 
           <div className="profile-topbar-right">
-            <button type="button" className="profile-icon-btn" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
+            <div className="notification-box-wrap" ref={notificationRef}>
+              <button
+                type="button"
+                className="profile-icon-btn notification-trigger"
+                aria-label="Notifications"
+                aria-expanded={showNotifications}
+                onClick={() => setShowNotifications((current) => !current)}
+              >
+                <Bell size={18} />
+                {notifications.length ? (
+                  <span className="notification-count">
+                    {notifications.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {showNotifications ? (
+                <div className="notification-box" role="status">
+                  <div className="notification-box-head">
+                    <h2>Notifications</h2>
+                    {loginNotification ? (
+                      <button type="button" onClick={clearLoginNotification}>
+                        Clear login
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length ? (
+                    <div className="notification-list">
+                      {notifications.map((notification) => (
+                        <article
+                          key={notification.id}
+                          className={`notification-item ${notification.tone}`}
+                        >
+                          <h3>{notification.title}</h3>
+                          <p>{notification.message}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="notification-empty">
+                      No new notifications.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
             <div className="profile-search">
               <Search size={16} />

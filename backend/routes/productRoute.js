@@ -1,11 +1,17 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 const controller = require("../controllers/productController");
+const { protect } = require("../middlewares/authMiddleware");
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.use(protect);
 
 router.post("/", controller.createProduct);
 router.get("/", controller.getProducts);
 router.put("/:id", controller.updateProduct);
 router.delete("/:id", controller.deleteProduct);
-router.post("/bulk", controller.bulkCreateProducts);
+router.post("/bulk", upload.single("file"), controller.bulkCreateProducts);
 
 module.exports = router;

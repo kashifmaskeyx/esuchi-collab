@@ -9,7 +9,21 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+const allowedOrigins = ["http://localhost:5173"];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -22,6 +36,9 @@ app.use("/api/shipments", require("./routes/shipmentRoute"));
 app.use("/api/suppliers", require("./routes/supplierRoute"));
 app.use("/api/stock-movements", require("./routes/stockMovementRoute"));
 app.use("/api/orders", require("./routes/orderRoute"));
+app.use("/api/staff", require("./routes/staffRoute"));
+app.use("/api/auditlogs", require("./routes/auditLogRoute"));
+app.use("/api/chatbot", require("./routes/chatbotRoute"));
 
 // Health check
 app.get("/", (req, res) => res.json({ message: "Inventory API running" }));

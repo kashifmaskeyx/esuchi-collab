@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'esuchiinfo@gmail.com').toLowerCase();
  
 exports.protect = async (req, res, next) => {
   let token;
@@ -22,6 +24,11 @@ exports.protect = async (req, res, next) => {
 };
  
 exports.adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') return next();
+  const userEmail = req.user?.email?.toLowerCase();
+
+  if (req.user && (req.user.role === 'admin' || userEmail === ADMIN_EMAIL)) {
+    return next();
+  }
+
   return res.status(403).json({ success: false, message: 'Admin access only' });
 };

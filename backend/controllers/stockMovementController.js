@@ -1,6 +1,7 @@
 const StockMovement = require("../models/stockMovementModel");
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
 
 //
 // CREATE stock movement
@@ -10,7 +11,10 @@ exports.createMovement = async (req, res) => {
     const { product, movementType, quantity, movementDate, confirmLowStock } =
       req.body;
 
-    const inventory = await Inventory.findOne({ product });
+    const inventoryQuery =
+      req.user.role === "admin" ? { product } : { product, user: req.user._id };
+
+    const inventory = await Inventory.findOne(inventoryQuery);
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -24,7 +28,12 @@ exports.createMovement = async (req, res) => {
         .json({ message: "Quantity must be a number greater than 0" });
     }
 
-    const productRecord = await Product.findById(product);
+    const productQuery =
+      req.user.role === "admin"
+        ? { _id: product }
+        : { _id: product, user: req.user._id };
+
+    const productRecord = await Product.findOne(productQuery);
 
     if (!productRecord) {
       return res.status(404).json({ message: "Product not found" });
@@ -82,6 +91,15 @@ exports.createMovement = async (req, res) => {
       movementType,
       quantity: numericQuantity,
       movementDate: parsedMovementDate,
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      newData: movement.toObject ? movement.toObject() : movement,
+      req,
     });
 
     res.status(201).json({
@@ -162,11 +180,23 @@ exports.getMovementsByProduct = async (req, res) => {
 //
 exports.deleteMovement = async (req, res) => {
   try {
-    const movement = await StockMovement.findByIdAndDelete(req.params.id);
+    const movement = await StockMovement.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!movement) {
       return res.status(404).json({ message: "Movement not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      oldData: movement.toObject ? movement.toObject() : movement,
+      req,
+    });
 
     res.json({ success: true, message: "Movement deleted" });
   } catch (err) {

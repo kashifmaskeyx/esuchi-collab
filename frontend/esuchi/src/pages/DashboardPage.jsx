@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
   Clock3,
@@ -12,7 +12,17 @@ import {
 import DashboardCard from "../components/DashboardCard";
 import { getDashboardData } from "../api/dashboard";
 import { getUserInitials } from "../api/auth";
+import { getShipments } from "../api/shipments";
 import "../css/Dashboard.css";
+
+const readLoginNotification = () => {
+  try {
+    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    return storedNotification ? JSON.parse(storedNotification) : null;
+  } catch {
+    return null;
+  }
+};
 
 const formatCurrency = (value) => {
   const amount = Number(value);
@@ -64,16 +74,36 @@ const getMovementTone = (movementType) => {
   return "success";
 };
 
+const formatStatusLabel = (status) => {
+  if (!status) {
+    return "Unknown";
+  }
+
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 export default function DashboardPage() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showNotifications, setShowNotifications] = useState(
+    Boolean(location.state?.openNotifications),
+  );
+  const notificationRef = useRef(null);
+  const [loginNotification, setLoginNotification] = useState(() =>
+    readLoginNotification(),
+  );
   const [dashboardData, setDashboardData] = useState({
     products: [],
     inventory: [],
     stockMovements: [],
   });
+  const [shipments, setShipments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -85,10 +115,14 @@ export default function DashboardPage() {
         setIsLoading(true);
         setErrorMessage("");
 
-        const data = await getDashboardData();
+        const [data, shipmentsResponse] = await Promise.all([
+          getDashboardData(),
+          getShipments().catch(() => ({ data: [] })),
+        ]);
 
         if (isMounted) {
           setDashboardData(data);
+          setShipments(shipmentsResponse.data ?? []);
         }
       } catch (error) {
         if (isMounted) {
@@ -176,20 +210,80 @@ export default function DashboardPage() {
     };
   }, [dashboardData.inventory, dashboardData.products]);
 
+  useEffect(() => {
+    if (!location.state?.openNotifications) {
+      return;
+    }
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state?.openNotifications, navigate]);
+
+  useEffect(() => {
+    if (!showNotifications) {
+      return undefined;
+    }
+
+    const closeNotifications = (event) => {
+      if (!notificationRef.current?.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeNotifications);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeNotifications);
+    };
+  }, [showNotifications]);
+
+  const notifications = useMemo(() => {
+    const lowStockNotifications = metrics.lowStockItems.map((item) => ({
+      id: `low-stock-${item._id}`,
+      title: "Low stock alert",
+      message: `${item.product?.name || "Unknown product"} has ${
+        item.currentStock
+      } left. Minimum stock is ${item.minimumStock}.`,
+      tone: "danger",
+    }));
+    const shipmentNotifications = shipments
+      .filter((shipment) => ["pending", "in_transit"].includes(shipment.status))
+      .map((shipment) => ({
+        id: `shipment-${shipment._id}`,
+        title: "Shipment update",
+        message: `${shipment.shipmentId || "Shipment"} is ${formatStatusLabel(
+          shipment.status,
+        ).toLowerCase()}.`,
+        tone: shipment.status === "in_transit" ? "success" : "danger",
+      }));
+
+    return [
+      ...(loginNotification
+        ? [{ id: "login-success", ...loginNotification }]
+        : []),
+      ...lowStockNotifications,
+      ...shipmentNotifications,
+    ];
+  }, [loginNotification, metrics.lowStockItems, shipments]);
+
+  const clearLoginNotification = () => {
+    sessionStorage.removeItem("esuchiLoginNotification");
+    setLoginNotification(null);
+  };
+
   const recentActivities = useMemo(
     () =>
       dashboardData.stockMovements.slice(0, 5).map((movement) => ({
         id: movement._id,
         title: movement.product?.name || "Unknown product",
-        subtitle: `${movement.user?.name || "Unknown user"} • ${formatRelativeTime(
+        subtitle: `${movement.user?.name || "Unknown user"} - ${formatRelativeTime(
           movement.createdAt || movement.movementDate,
         )}`,
         status:
           movement.movementType === "IN"
-            ? `Stock In • ${movement.quantity}`
+            ? `Stock In - ${movement.quantity}`
             : movement.movementType === "OUT"
-              ? `Stock Out • ${movement.quantity}`
-              : `Adjusted • ${movement.quantity}`,
+              ? `Stock Out - ${movement.quantity}`
+              : `Adjusted - ${movement.quantity}`,
         tone: getMovementTone(movement.movementType),
       })),
     [dashboardData.stockMovements],
@@ -224,13 +318,53 @@ export default function DashboardPage() {
           </div>
 
           <div className="topbar-right">
-            <button
-              type="button"
-              className="topbar-icon-btn"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-            </button>
+            <div className="notification-box-wrap" ref={notificationRef}>
+              <button
+                type="button"
+                className="topbar-icon-btn notification-trigger"
+                aria-label="Notifications"
+                aria-expanded={showNotifications}
+                onClick={() => setShowNotifications((current) => !current)}
+              >
+                <Bell size={18} />
+                {notifications.length ? (
+                  <span className="notification-count">
+                    {notifications.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {showNotifications ? (
+                <div className="notification-box" role="status">
+                  <div className="notification-box-head">
+                    <h2>Notifications</h2>
+                    {loginNotification ? (
+                      <button type="button" onClick={clearLoginNotification}>
+                        Clear login
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length ? (
+                    <div className="notification-list">
+                      {notifications.map((notification) => (
+                        <article
+                          key={notification.id}
+                          className={`notification-item ${notification.tone}`}
+                        >
+                          <h3>{notification.title}</h3>
+                          <p>{notification.message}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="notification-empty">
+                      No new notifications.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
             <div className="search-field">
               <Search size={18} />
@@ -409,7 +543,7 @@ export default function DashboardPage() {
                     <div>
                       <h4>{item.product?.name || "Unknown product"}</h4>
                       <p>
-                        Minimum {item.minimumStock} • Last updated{" "}
+                        Minimum {item.minimumStock} - Last updated{" "}
                         {formatRelativeTime(item.lastUpdated)}
                       </p>
                     </div>

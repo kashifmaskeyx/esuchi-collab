@@ -8,6 +8,11 @@ const API = axios.create({
   },
 });
 
+export const ADMIN_EMAIL = "esuchiinfo@gmail.com";
+
+export const isAdminEmail = (email) =>
+  email?.trim().toLowerCase() === ADMIN_EMAIL;
+
 const getAuthConfig = () => {
   const token = localStorage.getItem("token");
 
@@ -122,6 +127,37 @@ export const updateCurrentUser = async (data) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Profile update failed" };
+  }
+};
+
+export const getAdminUsers = async () => {
+  try {
+    const response = await API.get("/auth/users", getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load users" };
+  }
+};
+
+export const updateAdminUserRole = async (id, role) => {
+  try {
+    const response = await API.patch(
+      `/auth/users/${id}/role`,
+      { role },
+      getAuthConfig(),
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to update user role" };
+  }
+};
+
+export const requestEmailChangeOtp = async (data) => {
+  try {
+    const response = await API.post("/auth/me/email-otp", data, getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to send email OTP" };
   }
 };
 

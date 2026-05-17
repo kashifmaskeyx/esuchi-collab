@@ -1,6 +1,7 @@
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const Inventory = require("../models/inventoryModel");
+const createAuditLog = require("../utils/auditLogger");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -30,8 +31,14 @@ exports.createOrder = async (req, res) => {
         });
       }
 
-      const product = await Product.findById(item.product);
-      const inventory = await Inventory.findOne({ product: item.product });
+      const product = await Product.findOne({
+        _id: item.product,
+        user: req.user._id,
+      });
+      const inventory = await Inventory.findOne({
+        product: item.product,
+        user: req.user._id,
+      });
 
       if (!product) {
         return res.status(404).json({
@@ -79,14 +86,26 @@ exports.createOrder = async (req, res) => {
       totalAmount,
     });
 
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      newData: order.toObject ? order.toObject() : order,
+      req,
+    });
+
     // update stock
     for (let item of itemsWithPrice) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { quantity: -item.quantity },
-      });
+      await Product.findOneAndUpdate(
+        { _id: item.product, user: req.user._id },
+        {
+          $inc: { quantity: -item.quantity },
+        },
+      );
 
       await Inventory.findOneAndUpdate(
-        { product: item.product },
+        { product: item.product, user: req.user._id },
         {
           $inc: { currentStock: -item.quantity },
           lastUpdated: Date.now(),
@@ -170,15 +189,30 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
+    const oldOrder = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!oldOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = await Order.findOneAndUpdate(
+      query,
       { status },
       { new: true },
     );
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_ORDER_STATUS",
+      entity: "Order",
+      entityId: order._id,
+      oldData: oldOrder.toObject(),
+      newData: order.toObject(),
+      req,
+    });
 
     res.json({
       success: true,
@@ -191,11 +225,25 @@ exports.updateOrderStatus = async (req, res) => {
 //amin delete
 exports.deleteOrder = async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const query =
+      req.user.role === "admin"
+        ? { _id: req.params.id }
+        : { _id: req.params.id, user: req.user._id };
+
+    const order = await Order.findOneAndDelete(query);
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      oldData: order.toObject ? order.toObject() : order,
+      req,
+    });
 
     res.json({
       success: true,

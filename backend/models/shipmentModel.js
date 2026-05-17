@@ -29,7 +29,12 @@ const shipmentSchema = new mongoose.Schema(
       default: "pending",
     },
     notes: { type: String, trim: true, default: "" },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true },
 );

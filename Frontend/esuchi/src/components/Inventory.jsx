@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
+import Pagination from "./Pagination";
 import "../css/Inventory.css";
 
 const emptyMovementForm = {
@@ -21,6 +22,18 @@ const emptyMovementForm = {
   movementType: "IN",
   quantity: "1",
   movementDate: new Date().toISOString().slice(0, 10),
+};
+
+const INVENTORY_PAGE_SIZE = 6;
+const MOVEMENT_PAGE_SIZE = 6;
+
+const readLoginNotification = () => {
+  try {
+    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    return storedNotification ? JSON.parse(storedNotification) : null;
+  } catch {
+    return null;
+  }
 };
 
 const formatDate = (value) => {
@@ -65,6 +78,11 @@ export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const userInitials = useMemo(() => getUserInitials(), []);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
+  const [loginNotification, setLoginNotification] = useState(() =>
+    readLoginNotification(),
+  );
   const [pageData, setPageData] = useState({
     products: [],
     inventory: [],
@@ -73,6 +91,8 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [movementFilter, setMovementFilter] = useState("all");
   const [inventoryFilter, setInventoryFilter] = useState("all");
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [movementPage, setMovementPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,6 +125,37 @@ export default function Inventory() {
   useEffect(() => {
     loadInventoryData();
   }, []);
+
+  useEffect(() => {
+    setInventoryPage(1);
+    setMovementPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [inventoryFilter]);
+
+  useEffect(() => {
+    setMovementPage(1);
+  }, [movementFilter]);
+
+  useEffect(() => {
+    if (!showNotifications) {
+      return undefined;
+    }
+
+    const closeNotifications = (event) => {
+      if (!notificationRef.current?.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeNotifications);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeNotifications);
+    };
+  }, [showNotifications]);
 
   const inventoryByProductId = useMemo(
     () =>
@@ -142,6 +193,30 @@ export default function Inventory() {
       }),
     [inventoryByProductId, pageData.products],
   );
+
+  const notifications = useMemo(() => {
+    const lowStockNotifications = inventoryRows
+      .filter((row) => row.status !== "healthy")
+      .slice(0, 5)
+      .map((row) => ({
+        id: `low-stock-${row.id}`,
+        title: "Low stock alert",
+        message: `${row.productName} has ${row.currentStock} left. Minimum stock is ${row.minimumStock}.`,
+        tone: "danger",
+      }));
+
+    return [
+      ...(loginNotification
+        ? [{ id: "login-success", ...loginNotification }]
+        : []),
+      ...lowStockNotifications,
+    ];
+  }, [inventoryRows, loginNotification]);
+
+  const clearLoginNotification = () => {
+    sessionStorage.removeItem("esuchiLoginNotification");
+    setLoginNotification(null);
+  };
 
   const movementRows = useMemo(
     () =>
@@ -191,6 +266,40 @@ export default function Inventory() {
       return matchesSearch && matchesType;
     });
   }, [movementFilter, movementRows, searchTerm]);
+
+  const inventoryTotalPages = Math.ceil(
+    filteredInventoryRows.length / INVENTORY_PAGE_SIZE,
+  );
+  const movementTotalPages = Math.ceil(
+    filteredMovementRows.length / MOVEMENT_PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    if (inventoryTotalPages > 0 && inventoryPage > inventoryTotalPages) {
+      setInventoryPage(inventoryTotalPages);
+    }
+  }, [inventoryPage, inventoryTotalPages]);
+
+  useEffect(() => {
+    if (movementTotalPages > 0 && movementPage > movementTotalPages) {
+      setMovementPage(movementTotalPages);
+    }
+  }, [movementPage, movementTotalPages]);
+
+  const paginatedInventoryRows = useMemo(() => {
+    const startIndex = (inventoryPage - 1) * INVENTORY_PAGE_SIZE;
+
+    return filteredInventoryRows.slice(
+      startIndex,
+      startIndex + INVENTORY_PAGE_SIZE,
+    );
+  }, [filteredInventoryRows, inventoryPage]);
+
+  const paginatedMovementRows = useMemo(() => {
+    const startIndex = (movementPage - 1) * MOVEMENT_PAGE_SIZE;
+
+    return filteredMovementRows.slice(startIndex, startIndex + MOVEMENT_PAGE_SIZE);
+  }, [filteredMovementRows, movementPage]);
 
   const stats = useMemo(
     () => [
@@ -364,9 +473,53 @@ export default function Inventory() {
           </div>
 
           <div className="inventory-topbar-right">
-            <button type="button" className="inventory-icon-btn" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
+            <div className="notification-box-wrap" ref={notificationRef}>
+              <button
+                type="button"
+                className="inventory-icon-btn notification-trigger"
+                aria-label="Notifications"
+                aria-expanded={showNotifications}
+                onClick={() => setShowNotifications((current) => !current)}
+              >
+                <Bell size={18} />
+                {notifications.length ? (
+                  <span className="notification-count">
+                    {notifications.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {showNotifications ? (
+                <div className="notification-box" role="status">
+                  <div className="notification-box-head">
+                    <h2>Notifications</h2>
+                    {loginNotification ? (
+                      <button type="button" onClick={clearLoginNotification}>
+                        Clear login
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length ? (
+                    <div className="notification-list">
+                      {notifications.map((notification) => (
+                        <article
+                          key={notification.id}
+                          className={`notification-item ${notification.tone}`}
+                        >
+                          <h3>{notification.title}</h3>
+                          <p>{notification.message}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="notification-empty">
+                      No new notifications.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
             <button
               type="button"
@@ -482,7 +635,7 @@ export default function Inventory() {
                     </td>
                   </tr>
                 ) : filteredInventoryRows.length ? (
-                  filteredInventoryRows.map((row) => (
+                  paginatedInventoryRows.map((row) => (
                     <tr key={row.id}>
                       <td>{row.productName}</td>
                       <td>{row.productCode}</td>
@@ -511,6 +664,16 @@ export default function Inventory() {
               </tbody>
             </table>
           </div>
+
+          {!isLoading && !errorMessage && filteredInventoryRows.length ? (
+            <Pagination
+              currentPage={inventoryPage}
+              totalItems={filteredInventoryRows.length}
+              pageSize={INVENTORY_PAGE_SIZE}
+              onPageChange={setInventoryPage}
+              itemLabel="inventory records"
+            />
+          ) : null}
         </section>
 
         <section className="inventory-panel">
@@ -557,7 +720,7 @@ export default function Inventory() {
                     </td>
                   </tr>
                 ) : filteredMovementRows.length ? (
-                  filteredMovementRows.map((row) => (
+                  paginatedMovementRows.map((row) => (
                     <tr key={row.id}>
                       <td>{row.movementId}</td>
                       <td>{row.productName}</td>
@@ -586,6 +749,16 @@ export default function Inventory() {
               </tbody>
             </table>
           </div>
+
+          {!isLoading && !errorMessage && filteredMovementRows.length ? (
+            <Pagination
+              currentPage={movementPage}
+              totalItems={filteredMovementRows.length}
+              pageSize={MOVEMENT_PAGE_SIZE}
+              onPageChange={setMovementPage}
+              itemLabel="movements"
+            />
+          ) : null}
         </section>
 
         {isModalOpen ? (
