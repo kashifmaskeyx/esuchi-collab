@@ -15,6 +15,7 @@ import ProfilePage from "./components/ProfilePage";
 import SalesOrders from "./components/SalesOrders";
 import StaffRoles from "./components/StaffRoles";
 import AdminDashboard from "./components/AdminDashboard";
+import { getStoredUser, isAdminEmail } from "./api/auth";
 
 const BlankPage = () => (
   <div style={{ minHeight: "100vh", background: "#ffffff" }} />
@@ -23,6 +24,18 @@ const BlankPage = () => (
 const ProtectedRoute = () => {
   const token = localStorage.getItem("token");
   return token ? <Outlet /> : <Navigate to="/login" replace />;
+};
+
+const UserRoute = () => {
+  const currentUser = getStoredUser();
+  const isAdminUser =
+    currentUser?.role === "admin" || isAdminEmail(currentUser?.email);
+
+  if (isAdminUser) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Outlet />;
 };
 
 function App() {
@@ -38,6 +51,7 @@ function App() {
   <Route path="/admin" element={<AdminDashboard />} />
 
   <Route element={<ProtectedRoute />}>
+    <Route element={<UserRoute />}>
       <Route element={<AppShell />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/inventory" element={<Inventory />} />
@@ -52,6 +66,7 @@ function App() {
       <Route path="/discounts" element={<BlankPage />} />
       <Route path="/settings" element={<ProfilePage />} />
       <Route path="/help-center" element={<BlankPage />} />
+      </Route>
     </Route>
   </Route>
 </Routes>
