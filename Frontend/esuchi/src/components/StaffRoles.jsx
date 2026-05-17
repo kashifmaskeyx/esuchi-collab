@@ -136,6 +136,10 @@ export default function StaffRoles() {
   };
 
   const openEditModal = (member) => {
+    if (member.source === "admin-assigned") {
+      return;
+    }
+
     setEditingStaff(member);
     setForm({
       name: member.name || "",
@@ -208,6 +212,10 @@ export default function StaffRoles() {
   };
 
   const handleDelete = async (member) => {
+    if (member.source === "admin-assigned") {
+      return;
+    }
+
     if (!window.confirm(`Remove ${member.name}?`)) {
       return;
     }
@@ -304,6 +312,7 @@ export default function StaffRoles() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Source</th>
                   <th>Permissions</th>
                   <th>Actions</th>
                 </tr>
@@ -311,13 +320,13 @@ export default function StaffRoles() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="ops-table-state">
+                    <td colSpan="7" className="ops-table-state">
                       Loading staff records...
                     </td>
                   </tr>
                 ) : errorMessage ? (
                   <tr>
-                    <td colSpan="6" className="ops-table-state error">
+                    <td colSpan="7" className="ops-table-state error">
                       {errorMessage}
                     </td>
                   </tr>
@@ -338,6 +347,11 @@ export default function StaffRoles() {
                           </span>
                         </td>
                         <td>
+                          {member.source === "admin-assigned"
+                            ? "Admin assigned"
+                            : "Manual"}
+                        </td>
+                        <td>
                           <div className="ops-permission-list">
                             {enabledPermissions.length
                               ? enabledPermissions.map((permission) => (
@@ -353,6 +367,7 @@ export default function StaffRoles() {
                             <button
                               type="button"
                               className="ops-row-btn edit"
+                              disabled={member.source === "admin-assigned"}
                               onClick={() => openEditModal(member)}
                             >
                               <Pencil size={14} />
@@ -361,6 +376,7 @@ export default function StaffRoles() {
                             <button
                               type="button"
                               className="ops-row-btn delete"
+                              disabled={member.source === "admin-assigned"}
                               onClick={() => handleDelete(member)}
                             >
                               <Trash2 size={14} />
@@ -373,7 +389,7 @@ export default function StaffRoles() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="6" className="ops-table-state">
+                    <td colSpan="7" className="ops-table-state">
                       No staff records found.
                     </td>
                   </tr>

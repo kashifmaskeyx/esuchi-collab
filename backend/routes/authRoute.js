@@ -8,6 +8,8 @@ const {
   updateMe,
   requestEmailChangeOtp,
   changePassword,
+  getUsers,
+  updateUserRole,
   logout,
   requestSignupOtp,
   verifySignupOtp,
@@ -57,6 +59,8 @@ router.post(
 //
 // ================= AUTH USER =================
 //
+router.get("/users", protect, adminOnly, getUsers);
+router.patch("/users/:id/role", protect, adminOnly, updateUserRole);
 router.get("/me", protect, getMe);
 router.post(
   "/me/email-otp",

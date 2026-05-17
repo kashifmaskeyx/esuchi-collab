@@ -1,4 +1,5 @@
 const Staff = require("../models/staffModel");
+const User = require("../models/userModel");
 
 exports.createStaff = async (req, res) => {
   try {
@@ -30,8 +31,32 @@ exports.createStaff = async (req, res) => {
 exports.getStaff = async (req, res) => {
   try {
     const staff = await Staff.find({ owner: req.user._id }).sort("-createdAt");
+    const staffEmails = new Set(staff.map((member) => member.email));
+    const assignedStaffUsers = await User.find({ role: "staff" })
+      .select("name email isActive isVerified createdAt updatedAt")
+      .sort("-createdAt");
+    const assignedStaff = assignedStaffUsers
+      .filter((user) => !staffEmails.has(user.email))
+      .map((user) => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: "Staff",
+        status: user.isActive ? "active" : "suspended",
+        permissions: {
+          inventory: true,
+          orders: true,
+          shipments: true,
+          staff: false,
+        },
+        source: "admin-assigned",
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }));
+    const rows = [...assignedStaff, ...staff];
 
-    res.json({ success: true, count: staff.length, data: staff });
+    res.json({ success: true, count: rows.length, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

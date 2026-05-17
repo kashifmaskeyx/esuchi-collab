@@ -26,7 +26,13 @@ import {
 import AdminRevenue from "./AdminRevenue";
 import DashboardCard from "./DashboardCard";
 import Pagination from "./Pagination";
-import { ADMIN_EMAIL, getUserInitials, logoutUser } from "../api/auth";
+import {
+  ADMIN_EMAIL,
+  getAdminUsers,
+  getUserInitials,
+  logoutUser,
+  updateAdminUserRole,
+} from "../api/auth";
 import { getDashboardData } from "../api/dashboard";
 import {
   createSalesOrder,
@@ -51,7 +57,6 @@ import {
   getSuppliers,
   updateShipmentStatus,
 } from "../api/shipments";
-import { getStaff } from "../api/staff";
 import logo from "../assets/logo.png";
 import logoIn from "../assets/LogoIn.png";
 import "../css/Dashboard.css";
@@ -103,6 +108,19 @@ const emptyShipmentForm = {
 const emptyOrderForm = {
   product: "",
   quantity: "1",
+};
+
+const defaultAdminFilters = {
+  userRole: "all",
+  userStatus: "all",
+  userVerified: "all",
+  productCategory: "all",
+  productStatus: "all",
+  inventoryCategory: "all",
+  inventoryStatus: "all",
+  shipmentStatus: "all",
+  orderStatus: "all",
+  revenueStatus: "all",
 };
 
 const formatStatus = (status) => {
@@ -215,6 +233,7 @@ export default function AdminDashboard() {
   );
   const [activeAdminView, setActiveAdminView] = useState("Overview");
   const [searchTerm, setSearchTerm] = useState("");
+  const [adminFilters, setAdminFilters] = useState(defaultAdminFilters);
   const [productPage, setProductPage] = useState(1);
   const [inventoryPage, setInventoryPage] = useState(1);
   const [staffRows, setStaffRows] = useState([]);
@@ -227,6 +246,7 @@ export default function AdminDashboard() {
   const [overviewError, setOverviewError] = useState("");
   const [adminActionError, setAdminActionError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roleUpdatingUserId, setRoleUpdatingUserId] = useState("");
   const [productModalMode, setProductModalMode] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productForm, setProductForm] = useState(emptyProductForm);
@@ -258,7 +278,7 @@ export default function AdminDashboard() {
         suppliersResult,
         dashboardResult,
       ] = await Promise.allSettled([
-        getStaff(),
+        getAdminUsers(),
         getAdminOrders(),
         getShipments(),
         getSuppliers(),
@@ -341,6 +361,7 @@ export default function AdminDashboard() {
   const handleAdminNavClick = (label) => {
     setActiveAdminView(label);
     setSearchTerm("");
+    setAdminFilters(defaultAdminFilters);
 
     if (window.innerWidth <= 980) {
       setSidebarOpen(false);
@@ -350,22 +371,43 @@ export default function AdminDashboard() {
   useEffect(() => {
     setProductPage(1);
     setInventoryPage(1);
-  }, [searchTerm]);
+  }, [adminFilters, searchTerm]);
 
-  const filteredStaffRows = useMemo(() => {
+  const updateAdminFilter = (name, value) => {
+    setAdminFilters((current) => ({ ...current, [name]: value }));
+  };
+
+  const matchesAdminSearch = (row, fields) => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     if (!normalizedSearch) {
-      return staffRows;
+      return true;
     }
 
-    return staffRows.filter((member) =>
-      [member.name, member.email, member.role, member.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch),
-    );
-  }, [searchTerm, staffRows]);
+    return fields
+      .map((field) => row[field])
+      .filter((value) => value !== undefined && value !== null)
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearch);
+  };
+
+  const filteredStaffRows = useMemo(() => {
+    return staffRows.filter((member) => {
+      const role = member.role || "user";
+      const status = member.status || "unknown";
+      const verified = member.isVerified ? "verified" : "pending";
+
+      return (
+        (adminFilters.userRole === "all" || role === adminFilters.userRole) &&
+        (adminFilters.userStatus === "all" ||
+          status === adminFilters.userStatus) &&
+        (adminFilters.userVerified === "all" ||
+          verified === adminFilters.userVerified) &&
+        matchesAdminSearch(member, ["name", "email", "role", "status"])
+      );
+    });
+  }, [adminFilters, searchTerm, staffRows]);
 
   const inventoryByProductId = useMemo(
     () =>
@@ -475,65 +517,116 @@ export default function AdminDashboard() {
     [orderRows],
   );
 
-  const filterAdminRows = (rows, fields) => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    if (!normalizedSearch) {
-      return rows;
-    }
-
-    return rows.filter((row) =>
-      fields
-        .map((field) => row[field])
-        .filter((value) => value !== undefined && value !== null)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch),
-    );
-  };
-
   const filteredAdminProductRows = useMemo(
     () =>
-      filterAdminRows(adminProductRows, [
-        "name",
-        "code",
-        "category",
-        "supplier",
-        "status",
-      ]),
-    [adminProductRows, searchTerm],
+      adminProductRows.filter(
+        (product) =>
+          (adminFilters.productCategory === "all" ||
+            product.category === adminFilters.productCategory) &&
+          (adminFilters.productStatus === "all" ||
+            product.status === adminFilters.productStatus) &&
+          matchesAdminSearch(product, [
+            "name",
+            "code",
+            "category",
+            "supplier",
+            "status",
+          ]),
+      ),
+    [adminFilters, adminProductRows, searchTerm],
   );
 
   const filteredAdminInventoryRows = useMemo(
     () =>
-      filterAdminRows(adminInventoryRows, [
-        "productName",
-        "productCode",
-        "category",
-        "status",
-      ]),
-    [adminInventoryRows, searchTerm],
+      adminInventoryRows.filter(
+        (item) =>
+          (adminFilters.inventoryCategory === "all" ||
+            item.category === adminFilters.inventoryCategory) &&
+          (adminFilters.inventoryStatus === "all" ||
+            item.status === adminFilters.inventoryStatus) &&
+          matchesAdminSearch(item, [
+            "productName",
+            "productCode",
+            "category",
+            "status",
+          ]),
+      ),
+    [adminFilters, adminInventoryRows, searchTerm],
   );
 
   const filteredAdminShipmentRows = useMemo(
     () =>
-      filterAdminRows(adminShipmentRows, [
-        "shipmentId",
-        "supplier",
-        "products",
-        "status",
-      ]),
-    [adminShipmentRows, searchTerm],
+      adminShipmentRows.filter(
+        (shipment) =>
+          (adminFilters.shipmentStatus === "all" ||
+            shipment.status === adminFilters.shipmentStatus) &&
+          matchesAdminSearch(shipment, [
+            "shipmentId",
+            "supplier",
+            "products",
+            "status",
+          ]),
+      ),
+    [adminFilters, adminShipmentRows, searchTerm],
   );
 
   const filteredAdminOrderRows = useMemo(
     () =>
-      filterAdminRows(adminOrderRows, [
-        "orderId",
-        "products",
-        "status",
-      ]),
-    [adminOrderRows, searchTerm],
+      adminOrderRows.filter(
+        (order) =>
+          (adminFilters.orderStatus === "all" ||
+            order.status === adminFilters.orderStatus) &&
+          matchesAdminSearch(order, ["orderId", "products", "status"]),
+      ),
+    [adminFilters, adminOrderRows, searchTerm],
+  );
+
+  const filteredRevenueOrders = useMemo(
+    () =>
+      orderRows.filter((order) => {
+        const orderId = order._id
+          ? `ORD-${order._id.slice(-6).toUpperCase()}`
+          : "ORD";
+        const products = (order.orderItems ?? [])
+          .map((item) => item.product?.name)
+          .filter(Boolean)
+          .join(", ");
+
+        return (
+          (adminFilters.revenueStatus === "all" ||
+            order.status === adminFilters.revenueStatus) &&
+          matchesAdminSearch(
+            { orderId, products, status: order.status },
+            ["orderId", "products", "status"],
+          )
+        );
+      }),
+    [adminFilters, orderRows, searchTerm],
+  );
+
+  const productCategoryOptions = useMemo(
+    () => [...new Set(adminProductRows.map((product) => product.category))].sort(),
+    [adminProductRows],
+  );
+  const inventoryCategoryOptions = useMemo(
+    () => [...new Set(adminInventoryRows.map((item) => item.category))].sort(),
+    [adminInventoryRows],
+  );
+  const productStatusOptions = useMemo(
+    () => [...new Set(adminProductRows.map((product) => product.status))].sort(),
+    [adminProductRows],
+  );
+  const inventoryStatusOptions = useMemo(
+    () => [...new Set(adminInventoryRows.map((item) => item.status))].sort(),
+    [adminInventoryRows],
+  );
+  const shipmentStatusOptions = useMemo(
+    () => [...new Set(adminShipmentRows.map((shipment) => shipment.status))].sort(),
+    [adminShipmentRows],
+  );
+  const orderStatusOptions = useMemo(
+    () => [...new Set(adminOrderRows.map((order) => order.status))].sort(),
+    [adminOrderRows],
   );
 
   const productTotalPages = Math.ceil(
@@ -956,6 +1049,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUserRoleChange = async (member, role) => {
+    if (!member?._id || member.role === role) {
+      return;
+    }
+
+    setStaffError("");
+    setRoleUpdatingUserId(member._id);
+
+    try {
+      const response = await updateAdminUserRole(member._id, role);
+      const updatedUser = response.data;
+
+      setStaffRows((currentRows) =>
+        currentRows.map((currentUser) =>
+          currentUser._id === updatedUser._id
+            ? { ...currentUser, ...updatedUser }
+            : currentUser,
+        ),
+      );
+    } catch (error) {
+      setStaffError(
+        error.message || "Unable to update the selected user's role.",
+      );
+    } finally {
+      setRoleUpdatingUserId("");
+    }
+  };
+
   const overviewMetrics = useMemo(() => {
     const activeStaff = staffRows.filter(
       (member) => member.status?.toLowerCase() === "active",
@@ -1193,8 +1314,27 @@ export default function AdminDashboard() {
   const searchPlaceholder = isOverviewView
     ? "Search dashboard"
     : isUsersView
-      ? "Search staff"
+      ? "Search users"
       : `Search ${activeAdminView.toLowerCase()}`;
+  const renderFilterSelect = (label, name, value, options) => (
+    <label className="admin-filter-control">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(event) => updateAdminFilter(name, event.target.value)}
+      >
+        <option value="all">All</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {formatStatusLabel(option)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const renderAdminFilterBar = (children) => (
+    <div className="admin-filter-bar">{children}</div>
+  );
 
   return (
     <div className="admin-page">
@@ -1534,9 +1674,9 @@ export default function AdminDashboard() {
               <section className="dashboard-bottom-grid">
                 {isUsersView ? (
                   <DashboardCard
-                    title="Staff Access"
+                    title="Users"
                     icon={UsersRound}
-                    className="products-card"
+                    className="products-card admin-wide-card"
                     actionText={
                       <div className="admin-table-action">
                         {staffError ? (
@@ -1550,6 +1690,27 @@ export default function AdminDashboard() {
                       </div>
                     }
                   >
+                    {renderAdminFilterBar(
+                      <>
+                        {renderFilterSelect("Role", "userRole", adminFilters.userRole, [
+                          "user",
+                          "staff",
+                          "admin",
+                        ])}
+                        {renderFilterSelect(
+                          "Account",
+                          "userStatus",
+                          adminFilters.userStatus,
+                          ["active", "suspended"],
+                        )}
+                        {renderFilterSelect(
+                          "Email",
+                          "userVerified",
+                          adminFilters.userVerified,
+                          ["verified", "pending"],
+                        )}
+                      </>,
+                    )}
                     <div className="products-table-wrap">
                       <table className="products-table">
                         <thead>
@@ -1557,26 +1718,65 @@ export default function AdminDashboard() {
                             <th>Name</th>
                             <th>Email</th>
                             <th>Role</th>
-                            <th>Status</th>
+                            <th>Account</th>
+                            <th>Email Status</th>
+                            <th>Joined</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredStaffRows.map((member) => (
-                            <tr key={member.email}>
-                              <td>{member.name}</td>
-                              <td>{member.email}</td>
-                              <td>{member.role}</td>
-                              <td>
-                                <span
-                                  className={`admin-status-pill ${getStatusTone(
-                                    member.status,
-                                  )}`}
-                                >
-                                  {formatStatus(member.status)}
-                                </span>
+                          {filteredStaffRows.length ? (
+                            filteredStaffRows.map((member) => (
+                              <tr key={member._id || member.email}>
+                                <td>{member.name || "-"}</td>
+                                <td>{member.email}</td>
+                                <td>
+                                  <select
+                                    className="admin-role-select"
+                                    value={member.role || "user"}
+                                    disabled={
+                                      roleUpdatingUserId === member._id ||
+                                      !member._id
+                                    }
+                                    onChange={(event) =>
+                                      handleUserRoleChange(
+                                        member,
+                                        event.target.value,
+                                      )
+                                    }
+                                  >
+                                    <option value="user">User</option>
+                                    <option value="staff">Staff</option>
+                                    <option value="admin">Admin</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`admin-status-pill ${getStatusTone(
+                                      member.status,
+                                    )}`}
+                                  >
+                                    {formatStatus(member.status)}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`admin-status-pill ${
+                                      member.isVerified ? "success" : "warning"
+                                    }`}
+                                  >
+                                    {member.isVerified ? "Verified" : "Pending"}
+                                  </span>
+                                </td>
+                                <td>{formatDate(member.createdAt)}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td className="admin-table-empty" colSpan="6">
+                                {staffError || "No users found."}
                               </td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -1589,6 +1789,22 @@ export default function AdminDashboard() {
                     icon={Package}
                     className="products-card admin-wide-card"
                   >
+                    {renderAdminFilterBar(
+                      <>
+                        {renderFilterSelect(
+                          "Category",
+                          "productCategory",
+                          adminFilters.productCategory,
+                          productCategoryOptions,
+                        )}
+                        {renderFilterSelect(
+                          "Status",
+                          "productStatus",
+                          adminFilters.productStatus,
+                          productStatusOptions,
+                        )}
+                      </>,
+                    )}
                     <div className="products-table-wrap">
                       <table className="products-table">
                         <thead>
@@ -1665,6 +1881,22 @@ export default function AdminDashboard() {
                     icon={Warehouse}
                     className="products-card admin-wide-card"
                   >
+                    {renderAdminFilterBar(
+                      <>
+                        {renderFilterSelect(
+                          "Category",
+                          "inventoryCategory",
+                          adminFilters.inventoryCategory,
+                          inventoryCategoryOptions,
+                        )}
+                        {renderFilterSelect(
+                          "Status",
+                          "inventoryStatus",
+                          adminFilters.inventoryStatus,
+                          inventoryStatusOptions,
+                        )}
+                      </>,
+                    )}
                     <div className="products-table-wrap">
                       <table className="products-table">
                         <thead>
@@ -1723,6 +1955,14 @@ export default function AdminDashboard() {
                     icon={Truck}
                     className="products-card admin-wide-card"
                   >
+                    {renderAdminFilterBar(
+                      renderFilterSelect(
+                        "Status",
+                        "shipmentStatus",
+                        adminFilters.shipmentStatus,
+                        shipmentStatusOptions,
+                      ),
+                    )}
                     <div className="products-table-wrap">
                       <table className="products-table">
                         <thead>
@@ -1792,6 +2032,14 @@ export default function AdminDashboard() {
                     icon={ClipboardList}
                     className="products-card admin-wide-card"
                   >
+                    {renderAdminFilterBar(
+                      renderFilterSelect(
+                        "Status",
+                        "orderStatus",
+                        adminFilters.orderStatus,
+                        orderStatusOptions,
+                      ),
+                    )}
                     <div className="products-table-wrap">
                       <table className="products-table">
                         <thead>
@@ -1857,7 +2105,15 @@ export default function AdminDashboard() {
 
                 {isRevenueView ? (
                   <div className="admin-wide-card">
-                    <AdminRevenue orders={orderRows} />
+                    {renderAdminFilterBar(
+                      renderFilterSelect(
+                        "Status",
+                        "revenueStatus",
+                        adminFilters.revenueStatus,
+                        orderStatusOptions,
+                      ),
+                    )}
+                    <AdminRevenue orders={filteredRevenueOrders} />
                   </div>
                 ) : null}
 
