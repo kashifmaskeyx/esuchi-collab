@@ -127,6 +127,50 @@
   box-shadow: 0 12px 26px rgba(35, 92, 148, 0.24);
 }
 
+.ops-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ops-join-code {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.ops-join-code span {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ops-join-code strong {
+  color: var(--app-text);
+  font-size: 0.86rem;
+  letter-spacing: 0;
+}
+
+.ops-copy-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-blue);
+  background: var(--app-blue-soft);
+  cursor: pointer;
+}
+
 .ops-primary-btn:disabled,
 .ops-secondary-btn:disabled {
   opacity: 0.7;
