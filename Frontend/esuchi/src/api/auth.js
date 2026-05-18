@@ -130,6 +130,16 @@ export const updateCurrentUser = async (data) => {
   }
 };
 
+export const getCurrentUser = async () => {
+  try {
+    const response = await API.get("/auth/me", getAuthConfig());
+    persistUser(response.data?.user);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load profile" };
+  }
+};
+
 export const getAdminUsers = async () => {
   try {
     const response = await API.get("/auth/users", getAuthConfig());
