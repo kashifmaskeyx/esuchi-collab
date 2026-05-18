@@ -3,6 +3,7 @@ import axios from "axios";
 // 🔗 Change this to your backend URL
 const API = axios.create({
   baseURL: "http://localhost:5000/api", // <-- update if needed
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -26,10 +27,6 @@ const getAuthConfig = () => {
 };
 
 const persistAuthToken = (data) => {
-  if (data?.token) {
-    localStorage.setItem("token", data.token);
-  }
-
   if (data?.user) {
     localStorage.setItem("currentUser", JSON.stringify(data.user));
   }
@@ -122,11 +119,21 @@ export const loginUser = async (data) => {
 
 export const updateCurrentUser = async (data) => {
   try {
-    const response = await API.put("/auth/me", data, getAuthConfig());
+    const response = await API.put("/auth/me", data);
     persistUser(response.data?.user);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Profile update failed" };
+  }
+};
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await API.get("/auth/me", getAuthConfig());
+    persistUser(response.data?.user);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load profile" };
   }
 };
 
@@ -154,7 +161,7 @@ export const updateAdminUserRole = async (id, role) => {
 
 export const requestEmailChangeOtp = async (data) => {
   try {
-    const response = await API.post("/auth/me/email-otp", data, getAuthConfig());
+    const response = await API.post("/auth/me/email-otp", data);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to send email OTP" };
@@ -163,15 +170,20 @@ export const requestEmailChangeOtp = async (data) => {
 
 export const changeCurrentPassword = async (data) => {
   try {
-    const response = await API.put("/auth/password", data, getAuthConfig());
+    const response = await API.put("/auth/password", data);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Password change failed" };
   }
 };
 
-export const logoutUser = () => {
-  localStorage.removeItem("token");
+export const logoutUser = async () => {
+  try {
+    await API.post("/auth/logout");
+  } catch {
+    // Local cleanup should still happen even if the server session is already gone.
+  }
+
   localStorage.removeItem("currentUser");
   localStorage.removeItem("esuchiProfile");
 };

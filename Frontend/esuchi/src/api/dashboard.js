@@ -2,6 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -25,7 +26,8 @@ const getProductsFromResponse = (data) => {
   return Array.isArray(data?.products) ? data.products : [];
 };
 
-const getDataRowsFromResponse = (data) => (Array.isArray(data?.data) ? data.data : []);
+const getDataRowsFromResponse = (data) =>
+  Array.isArray(data?.data) ? data.data : [];
 
 const getAllPaginatedRows = async (endpoint, getRows) => {
   const firstResponse = await API.get(endpoint);
@@ -51,15 +53,20 @@ const getAllPaginatedRows = async (endpoint, getRows) => {
 };
 
 export const getDashboardData = async () => {
-  const [products, inventory, stockMovements] = await Promise.all([
-    getAllPaginatedRows("/products", getProductsFromResponse),
-    getAllPaginatedRows("/inventory", getDataRowsFromResponse),
-    getAllPaginatedRows("/stock-movements", getDataRowsFromResponse),
-  ]);
+  const [products, inventory, stockMovements, orders, returns] =
+    await Promise.all([
+      getAllPaginatedRows("/products", getProductsFromResponse),
+      getAllPaginatedRows("/inventory", getDataRowsFromResponse),
+      getAllPaginatedRows("/stock-movements", getDataRowsFromResponse),
+      getAllPaginatedRows("/orders", getDataRowsFromResponse),
+      getAllPaginatedRows("/returns", getDataRowsFromResponse),
+    ]);
 
   return {
     products,
     inventory,
     stockMovements,
+    orders,
+    returns,
   };
 };
