@@ -32,3 +32,20 @@ exports.adminOnly = (req, res, next) => {
 
   return res.status(403).json({ success: false, message: 'Admin access only' });
 };
+
+exports.authorize = (...allowedRoles) => (req, res, next) => {
+  const userEmail = req.user?.email?.toLowerCase();
+  const effectiveRole =
+    req.user?.role === "admin" || userEmail === ADMIN_EMAIL
+      ? "admin"
+      : req.user?.role;
+
+  if (!effectiveRole || !allowedRoles.includes(effectiveRole)) {
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Allowed roles: ${allowedRoles.join(", ")}`,
+    });
+  }
+
+  return next();
+};
