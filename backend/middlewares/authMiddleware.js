@@ -77,3 +77,26 @@ exports.adminOnly = (req, res, next) => {
 };
 
 exports.companyAdminOnly = exports.adminOnly;
+
+exports.authorize = (...allowedRoles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Not authorized" });
+  }
+
+  if (req.user.membershipStatus !== "approved") {
+    return res.status(403).json({
+      success: false,
+      message: "Your company membership is waiting for admin approval",
+      membershipStatus: req.user.membershipStatus,
+    });
+  }
+
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Allowed roles: ${allowedRoles.join(", ")}`,
+    });
+  }
+
+  return next();
+};

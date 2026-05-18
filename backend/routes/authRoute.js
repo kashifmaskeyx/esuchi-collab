@@ -22,7 +22,7 @@ const {
   adminResetUserPassword,
 } = require("../controllers/passwordResetController");
 
-const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const { protect, authorize } = require("../middlewares/authMiddleware");
 const {
   authRateLimit,
   otpRequestRateLimit,
@@ -67,8 +67,8 @@ router.post(
 //
 // ================= AUTH USER =================
 //
-router.get("/users", protect, adminOnly, getUsers);
-router.patch("/users/:id/role", protect, adminOnly, updateUserRole);
+router.get("/users", protect, authorize("admin"), getUsers);
+router.patch("/users/:id/role", protect, authorize("admin"), updateUserRole);
 router.get("/me", protect, getMe);
 router.post(
   "/me/email-otp",
@@ -125,7 +125,7 @@ router.post(
 router.post(
   "/admin/reset-user-password",
   protect,
-  adminOnly,
+  authorize("admin"),
   adminResetUserPassword,
 );
 

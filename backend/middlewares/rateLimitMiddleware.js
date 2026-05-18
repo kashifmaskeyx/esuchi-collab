@@ -1,51 +1,53 @@
-const mongoose = require("mongoose");
+const createRateLimiter = ({
+  windowMs,
+  maxRequests,
+  message,
+}) => {
+  const requestStore = new Map();
 
-const auditLogSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+  return (req, res, next) => {
+    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const now = Date.now();
+    const windowStart = now - windowMs;
 
-    company: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
-      index: true,
-    },
+    const existing = requestStore.get(ip) || [];
+    const recentRequests = existing.filter((timestamp) => timestamp > windowStart);
+    recentRequests.push(now);
+    requestStore.set(ip, recentRequests);
 
-    action: {
-      type: String,
-      required: true,
-    },
+    if (recentRequests.length > maxRequests) {
+      const retryAfterSeconds = Math.ceil((recentRequests[0] + windowMs - now) / 1000);
+      res.setHeader("Retry-After", Math.max(retryAfterSeconds, 1));
+      return res.status(429).json({
+        success: false,
+        message,
+      });
+    }
 
-    entity: {
-      type: String,
-      required: true,
-    },
+    return next();
+  };
+};
 
-    entityId: {
-      type: mongoose.Schema.Types.ObjectId,
-    },
+const authRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 10,
+  message: "Too many login/reset attempts. Please try again later.",
+});
 
-    oldData: {
-      type: Object,
-    },
+const otpRequestRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 5,
+  message: "Too many OTP requests. Please wait before trying again.",
+});
 
-    newData: {
-      type: Object,
-    },
+const otpVerifyRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 10,
+  message: "Too many OTP verification attempts. Please try again later.",
+});
 
-    ipAddress: {
-      type: String,
-    },
-
-    userAgent: {
-      type: String,
-    },
-  },
-  {
-    timestamps: true,
-  },
-);
-
-module.exports = mongoose.model("auditlogModel", auditLogSchema);
+module.exports = {
+  authRateLimit,
+  otpRequestRateLimit,
+  otpVerifyRateLimit,
+};
