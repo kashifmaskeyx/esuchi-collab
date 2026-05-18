@@ -1,10 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
   Bell,
+  Check,
   CircleDollarSign,
   ClipboardList,
+  Copy,
   LayoutDashboard,
   LogOut,
   Package,
@@ -29,11 +37,14 @@ import Pagination from "./Pagination";
 import {
   ADMIN_EMAIL,
   getAdminUsers,
+  getCurrentUser,
+  getStoredUser,
   getUserInitials,
   logoutUser,
   updateAdminUserRole,
 } from "../api/auth";
 import { getDashboardData } from "../api/dashboard";
+import { approveStaff, rejectStaff } from "../api/staff";
 import {
   createSalesOrder,
   deleteSalesOrder,
@@ -170,7 +181,9 @@ const getProductCode = (product, inventory) => {
     return inventory.inventoryId;
   }
 
-  return `PRD-${String(product?._id || "unknown").slice(-6).toUpperCase()}`;
+  return `PRD-${String(product?._id || "unknown")
+    .slice(-6)
+    .toUpperCase()}`;
 };
 
 const formatDate = (value) => {
@@ -227,7 +240,12 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const notificationRef = useRef(null);
-  const userInitials = useMemo(() => getUserInitials(adminUser) || "EA", []);
+  const [authUser, setAuthUser] = useState(() => getStoredUser() || adminUser);
+  const userInitials = useMemo(
+    () => getUserInitials(authUser) || "EA",
+    [authUser],
+  );
+  const joinCode = authUser?.company?.joinCode;
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.innerWidth > 980,
   );
@@ -266,6 +284,7 @@ export default function AdminDashboard() {
   const [loginNotification, setLoginNotification] = useState(() =>
     readLoginNotification(),
   );
+  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
   const loadAdminData = useCallback(async () => {
     try {
@@ -333,6 +352,28 @@ export default function AdminDashboard() {
   }, [loadAdminData]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadCurrentUser = async () => {
+      try {
+        const response = await getCurrentUser();
+
+        if (isMounted && response.user) {
+          setAuthUser(response.user);
+        }
+      } catch {
+        // The dashboard can still render from the stored user while auth refresh fails.
+      }
+    };
+
+    loadCurrentUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!location.state?.openNotifications) {
       return;
     }
@@ -377,20 +418,23 @@ export default function AdminDashboard() {
     setAdminFilters((current) => ({ ...current, [name]: value }));
   };
 
-  const matchesAdminSearch = (row, fields) => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  const matchesAdminSearch = useCallback(
+    (row, fields) => {
+      const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    if (!normalizedSearch) {
-      return true;
-    }
+      if (!normalizedSearch) {
+        return true;
+      }
 
-    return fields
-      .map((field) => row[field])
-      .filter((value) => value !== undefined && value !== null)
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedSearch);
-  };
+      return fields
+        .map((field) => row[field])
+        .filter((value) => value !== undefined && value !== null)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch);
+    },
+    [searchTerm],
+  );
 
   const filteredStaffRows = useMemo(() => {
     return staffRows.filter((member) => {
@@ -407,7 +451,7 @@ export default function AdminDashboard() {
         matchesAdminSearch(member, ["name", "email", "role", "status"])
       );
     });
-  }, [adminFilters, searchTerm, staffRows]);
+  }, [adminFilters, matchesAdminSearch, staffRows]);
 
   const inventoryByProductId = useMemo(
     () =>
@@ -478,7 +522,8 @@ export default function AdminDashboard() {
     () =>
       shipmentRows.map((shipment) => ({
         id: shipment._id,
-        shipmentId: shipment.shipmentId || `SHP-${String(shipment._id).slice(-6)}`,
+        shipmentId:
+          shipment.shipmentId || `SHP-${String(shipment._id).slice(-6)}`,
         supplier: shipment.supplier || "-",
         products: (shipment.products ?? [])
           .map((item) => item.product?.name)
@@ -533,7 +578,7 @@ export default function AdminDashboard() {
             "status",
           ]),
       ),
-    [adminFilters, adminProductRows, searchTerm],
+    [adminFilters, adminProductRows, matchesAdminSearch],
   );
 
   const filteredAdminInventoryRows = useMemo(
@@ -551,7 +596,7 @@ export default function AdminDashboard() {
             "status",
           ]),
       ),
-    [adminFilters, adminInventoryRows, searchTerm],
+    [adminFilters, adminInventoryRows, matchesAdminSearch],
   );
 
   const filteredAdminShipmentRows = useMemo(
@@ -567,7 +612,7 @@ export default function AdminDashboard() {
             "status",
           ]),
       ),
-    [adminFilters, adminShipmentRows, searchTerm],
+    [adminFilters, adminShipmentRows, matchesAdminSearch],
   );
 
   const filteredAdminOrderRows = useMemo(
@@ -578,7 +623,7 @@ export default function AdminDashboard() {
             order.status === adminFilters.orderStatus) &&
           matchesAdminSearch(order, ["orderId", "products", "status"]),
       ),
-    [adminFilters, adminOrderRows, searchTerm],
+    [adminFilters, adminOrderRows, matchesAdminSearch],
   );
 
   const filteredRevenueOrders = useMemo(
@@ -595,17 +640,19 @@ export default function AdminDashboard() {
         return (
           (adminFilters.revenueStatus === "all" ||
             order.status === adminFilters.revenueStatus) &&
-          matchesAdminSearch(
-            { orderId, products, status: order.status },
-            ["orderId", "products", "status"],
-          )
+          matchesAdminSearch({ orderId, products, status: order.status }, [
+            "orderId",
+            "products",
+            "status",
+          ])
         );
       }),
-    [adminFilters, orderRows, searchTerm],
+    [adminFilters, matchesAdminSearch, orderRows],
   );
 
   const productCategoryOptions = useMemo(
-    () => [...new Set(adminProductRows.map((product) => product.category))].sort(),
+    () =>
+      [...new Set(adminProductRows.map((product) => product.category))].sort(),
     [adminProductRows],
   );
   const inventoryCategoryOptions = useMemo(
@@ -613,7 +660,8 @@ export default function AdminDashboard() {
     [adminInventoryRows],
   );
   const productStatusOptions = useMemo(
-    () => [...new Set(adminProductRows.map((product) => product.status))].sort(),
+    () =>
+      [...new Set(adminProductRows.map((product) => product.status))].sort(),
     [adminProductRows],
   );
   const inventoryStatusOptions = useMemo(
@@ -621,7 +669,8 @@ export default function AdminDashboard() {
     [adminInventoryRows],
   );
   const shipmentStatusOptions = useMemo(
-    () => [...new Set(adminShipmentRows.map((shipment) => shipment.status))].sort(),
+    () =>
+      [...new Set(adminShipmentRows.map((shipment) => shipment.status))].sort(),
     [adminShipmentRows],
   );
   const orderStatusOptions = useMemo(
@@ -668,8 +717,7 @@ export default function AdminDashboard() {
 
   const selectedMovementRow = useMemo(
     () =>
-      adminInventoryRows.find((row) => row.id === movementForm.product) ||
-      null,
+      adminInventoryRows.find((row) => row.id === movementForm.product) || null,
     [adminInventoryRows, movementForm.product],
   );
 
@@ -769,7 +817,10 @@ export default function AdminDashboard() {
 
         if (currentRow?.inventoryRecordId) {
           await Promise.all([
-            updateInventoryStock(currentRow.inventoryRecordId, payload.quantity),
+            updateInventoryStock(
+              currentRow.inventoryRecordId,
+              payload.quantity,
+            ),
             updateInventoryMinimum(currentRow.inventoryRecordId, minimumStock),
           ]);
         } else {
@@ -1196,7 +1247,13 @@ export default function AdminDashboard() {
         icon: ShoppingCart,
       },
     ],
-    [inventoryRows.length, orderRows.length, overviewMetrics, productRows.length, shipmentRows.length],
+    [
+      inventoryRows.length,
+      orderRows.length,
+      overviewMetrics,
+      productRows.length,
+      shipmentRows.length,
+    ],
   );
 
   const notifications = useMemo(() => {
@@ -1243,6 +1300,67 @@ export default function AdminDashboard() {
   const clearLoginNotification = () => {
     sessionStorage.removeItem("esuchiLoginNotification");
     setLoginNotification(null);
+  };
+
+  const handleApproveUser = async (member) => {
+    if (!member?._id) {
+      return;
+    }
+
+    setStaffError("");
+    setRoleUpdatingUserId(member._id);
+
+    try {
+      await approveStaff(member._id);
+      await loadAdminData();
+    } catch (error) {
+      setStaffError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to approve this user.",
+      );
+    } finally {
+      setRoleUpdatingUserId("");
+    }
+  };
+
+  const handleRejectUser = async (member) => {
+    if (
+      !member?._id ||
+      !window.confirm(`Reject ${member.name || member.email}?`)
+    ) {
+      return;
+    }
+
+    setStaffError("");
+    setRoleUpdatingUserId(member._id);
+
+    try {
+      await rejectStaff(member._id);
+      await loadAdminData();
+    } catch (error) {
+      setStaffError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to reject this user.",
+      );
+    } finally {
+      setRoleUpdatingUserId("");
+    }
+  };
+
+  const handleCopyJoinCode = async () => {
+    if (!joinCode) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setCopiedJoinCode(true);
+      window.setTimeout(() => setCopiedJoinCode(false), 1800);
+    } catch {
+      setAdminActionError("Unable to copy join code.");
+    }
   };
 
   const isOverviewView = activeAdminView === "Overview";
@@ -1377,7 +1495,7 @@ export default function AdminDashboard() {
         <nav className="admin-sidebar-nav" aria-label="Admin navigation">
           <p className="admin-sidebar-label">ADMIN</p>
           <ul>
-            {adminNavItems.map(({ label, icon: Icon }) => (
+            {adminNavItems.map(({ label, icon }) => (
               <li key={label}>
                 <button
                   type="button"
@@ -1386,7 +1504,7 @@ export default function AdminDashboard() {
                   }`}
                   onClick={() => handleAdminNavClick(label)}
                 >
-                  <Icon size={17} />
+                  {React.createElement(icon, { size: 17 })}
                   <span>{label}</span>
                 </button>
               </li>
@@ -1505,17 +1623,38 @@ export default function AdminDashboard() {
           </div>
         ) : null}
 
+        {joinCode ? (
+          <section className="admin-join-code-panel">
+            <div>
+              <span>Company join code</span>
+              <strong>{joinCode}</strong>
+              <p>
+                Share this code with employees. They should choose Join company
+                on the signup page.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="admin-copy-code-btn"
+              onClick={handleCopyJoinCode}
+            >
+              {copiedJoinCode ? <Check size={16} /> : <Copy size={16} />}
+              {copiedJoinCode ? "Copied" : "Copy code"}
+            </button>
+          </section>
+        ) : null}
+
         {isSettingsView ? (
           <section className="admin-profile-grid">
             <DashboardCard title="Admin Profile" icon={UserCog}>
               <div className="admin-profile-card">
                 <div className="admin-profile-avatar">{userInitials}</div>
                 <div>
-                  <h2>{adminUser.name}</h2>
-                  <p>{adminUser.email}</p>
+                  <h2>{authUser.name || adminUser.name}</h2>
+                  <p>{authUser.email || adminUser.email}</p>
                   <span className="admin-role-badge">
                     <ShieldCheck size={15} />
-                    {adminUser.role}
+                    {authUser.role || adminUser.role}
                   </span>
                 </div>
               </div>
@@ -1525,11 +1664,17 @@ export default function AdminDashboard() {
               <div className="admin-detail-list">
                 <div>
                   <span>Name</span>
-                  <strong>{adminUser.name}</strong>
+                  <strong>{authUser.name || adminUser.name}</strong>
                 </div>
                 <div>
                   <span>Email</span>
-                  <strong>{adminUser.email}</strong>
+                  <strong>{authUser.email || adminUser.email}</strong>
+                </div>
+                <div>
+                  <span>Company</span>
+                  <strong>
+                    {authUser.company?.name || "Company workspace"}
+                  </strong>
                 </div>
                 <div>
                   <span>Access</span>
@@ -1654,7 +1799,9 @@ export default function AdminDashboard() {
                                   {formatStatusLabel(order.status)}
                                 </span>
                               </td>
-                              <td>{formatCompactCurrency(order.totalAmount)}</td>
+                              <td>
+                                {formatCompactCurrency(order.totalAmount)}
+                              </td>
                               <td>{formatDate(order.createdAt)}</td>
                             </tr>
                           ))
@@ -1680,9 +1827,7 @@ export default function AdminDashboard() {
                     actionText={
                       <div className="admin-table-action">
                         {staffError ? (
-                          <span className="card-inline-note">
-                            {staffError}
-                          </span>
+                          <span className="card-inline-note">{staffError}</span>
                         ) : null}
                         <span className="card-inline-note">
                           {filteredStaffRows.length} visible
@@ -1692,11 +1837,12 @@ export default function AdminDashboard() {
                   >
                     {renderAdminFilterBar(
                       <>
-                        {renderFilterSelect("Role", "userRole", adminFilters.userRole, [
-                          "user",
-                          "staff",
-                          "admin",
-                        ])}
+                        {renderFilterSelect(
+                          "Role",
+                          "userRole",
+                          adminFilters.userRole,
+                          ["user", "staff", "admin"],
+                        )}
                         {renderFilterSelect(
                           "Account",
                           "userStatus",
@@ -1721,6 +1867,7 @@ export default function AdminDashboard() {
                             <th>Account</th>
                             <th>Email Status</th>
                             <th>Joined</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1768,11 +1915,44 @@ export default function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td>{formatDate(member.createdAt)}</td>
+                                <td>
+                                  {member.membershipStatus === "pending" ||
+                                  member.status === "pending" ? (
+                                    <div className="admin-user-actions">
+                                      <button
+                                        type="button"
+                                        className="admin-mini-action approve"
+                                        disabled={
+                                          roleUpdatingUserId === member._id
+                                        }
+                                        onClick={() =>
+                                          handleApproveUser(member)
+                                        }
+                                      >
+                                        Approve
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="admin-mini-action reject"
+                                        disabled={
+                                          roleUpdatingUserId === member._id
+                                        }
+                                        onClick={() => handleRejectUser(member)}
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="card-inline-note">
+                                      Approved
+                                    </span>
+                                  )}
+                                </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td className="admin-table-empty" colSpan="6">
+                              <td className="admin-table-empty" colSpan="7">
                                 {staffError || "No users found."}
                               </td>
                             </tr>
@@ -1838,7 +2018,9 @@ export default function AdminDashboard() {
                                   <div className="admin-row-actions">
                                     <button
                                       type="button"
-                                      onClick={() => openEditProductModal(product)}
+                                      onClick={() =>
+                                        openEditProductModal(product)
+                                      }
                                     >
                                       <Pencil size={14} />
                                       Edit
@@ -1846,7 +2028,9 @@ export default function AdminDashboard() {
                                     <button
                                       type="button"
                                       className="danger"
-                                      onClick={() => handleDeleteProduct(product)}
+                                      onClick={() =>
+                                        handleDeleteProduct(product)
+                                      }
                                     >
                                       <Trash2 size={14} />
                                       Delete
@@ -1991,12 +2175,16 @@ export default function AdminDashboard() {
                                     {formatStatusLabel(shipment.status)}
                                   </span>
                                 </td>
-                                <td>{formatDate(shipment.expectedDeliveryDate)}</td>
+                                <td>
+                                  {formatDate(shipment.expectedDeliveryDate)}
+                                </td>
                                 <td>
                                   <div className="admin-row-actions">
                                     <button
                                       type="button"
-                                      onClick={() => openEditShipmentModal(shipment)}
+                                      onClick={() =>
+                                        openEditShipmentModal(shipment)
+                                      }
                                     >
                                       <Pencil size={14} />
                                       Edit
@@ -2004,7 +2192,9 @@ export default function AdminDashboard() {
                                     <button
                                       type="button"
                                       className="danger"
-                                      onClick={() => handleDeleteShipment(shipment)}
+                                      onClick={() =>
+                                        handleDeleteShipment(shipment)
+                                      }
                                     >
                                       <Trash2 size={14} />
                                       Delete
@@ -2067,7 +2257,9 @@ export default function AdminDashboard() {
                                     {formatStatusLabel(order.status)}
                                   </span>
                                 </td>
-                                <td>{formatCompactCurrency(order.totalAmount)}</td>
+                                <td>
+                                  {formatCompactCurrency(order.totalAmount)}
+                                </td>
                                 <td>{formatDate(order.createdAt)}</td>
                                 <td>
                                   <div className="admin-row-actions">
@@ -2116,7 +2308,6 @@ export default function AdminDashboard() {
                     <AdminRevenue orders={filteredRevenueOrders} />
                   </div>
                 ) : null}
-
               </section>
             )}
           </>
@@ -2125,13 +2316,22 @@ export default function AdminDashboard() {
 
       {productModalMode ? (
         <div className="admin-modal-backdrop" onClick={closeAdminModals}>
-          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="admin-modal-head">
               <div>
-                <h2>{productModalMode === "add" ? "Add Product" : "Edit Product"}</h2>
+                <h2>
+                  {productModalMode === "add" ? "Add Product" : "Edit Product"}
+                </h2>
                 <p>Manage product details and inventory thresholds.</p>
               </div>
-              <button type="button" onClick={closeAdminModals} aria-label="Close modal">
+              <button
+                type="button"
+                onClick={closeAdminModals}
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2139,7 +2339,11 @@ export default function AdminDashboard() {
             <form className="admin-form" onSubmit={handleSaveProduct}>
               <label>
                 <span>Product Name</span>
-                <input name="name" value={productForm.name} onChange={handleProductFormChange} />
+                <input
+                  name="name"
+                  value={productForm.name}
+                  onChange={handleProductFormChange}
+                />
               </label>
               <label>
                 <span>Category</span>
@@ -2198,10 +2402,16 @@ export default function AdminDashboard() {
                 />
               </label>
 
-              {adminActionError ? <p className="admin-form-error">{adminActionError}</p> : null}
+              {adminActionError ? (
+                <p className="admin-form-error">{adminActionError}</p>
+              ) : null}
 
               <div className="admin-form-actions">
-                <button type="button" className="secondary" onClick={closeAdminModals}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={closeAdminModals}
+                >
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting}>
@@ -2215,13 +2425,20 @@ export default function AdminDashboard() {
 
       {isMovementModalOpen ? (
         <div className="admin-modal-backdrop" onClick={closeAdminModals}>
-          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="admin-modal-head">
               <div>
                 <h2>Record Stock Movement</h2>
                 <p>Save stock in, stock out, or stock adjustment records.</p>
               </div>
-              <button type="button" onClick={closeAdminModals} aria-label="Close modal">
+              <button
+                type="button"
+                onClick={closeAdminModals}
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2281,10 +2498,16 @@ export default function AdminDashboard() {
                 </div>
               ) : null}
 
-              {adminActionError ? <p className="admin-form-error">{adminActionError}</p> : null}
+              {adminActionError ? (
+                <p className="admin-form-error">{adminActionError}</p>
+              ) : null}
 
               <div className="admin-form-actions">
-                <button type="button" className="secondary" onClick={closeAdminModals}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={closeAdminModals}
+                >
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting}>
@@ -2298,7 +2521,10 @@ export default function AdminDashboard() {
 
       {isShipmentModalOpen ? (
         <div className="admin-modal-backdrop" onClick={closeAdminModals}>
-          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="admin-modal-head">
               <div>
                 <h2>{selectedShipment ? "Edit Shipment" : "Add Shipment"}</h2>
@@ -2308,7 +2534,11 @@ export default function AdminDashboard() {
                     : "Create a shipment from backend suppliers and products."}
                 </p>
               </div>
-              <button type="button" onClick={closeAdminModals} aria-label="Close modal">
+              <button
+                type="button"
+                onClick={closeAdminModals}
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2390,10 +2620,16 @@ export default function AdminDashboard() {
                 </>
               )}
 
-              {adminActionError ? <p className="admin-form-error">{adminActionError}</p> : null}
+              {adminActionError ? (
+                <p className="admin-form-error">{adminActionError}</p>
+              ) : null}
 
               <div className="admin-form-actions">
-                <button type="button" className="secondary" onClick={closeAdminModals}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={closeAdminModals}
+                >
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting}>
@@ -2407,17 +2643,26 @@ export default function AdminDashboard() {
 
       {isOrderModalOpen ? (
         <div className="admin-modal-backdrop" onClick={closeAdminModals}>
-          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="admin-modal-head">
               <div>
-                <h2>{selectedOrder ? "Edit Sales Order" : "Add Sales Order"}</h2>
+                <h2>
+                  {selectedOrder ? "Edit Sales Order" : "Add Sales Order"}
+                </h2>
                 <p>
                   {selectedOrder
                     ? "Update the order status."
                     : "Create an order from an available product."}
                 </p>
               </div>
-              <button type="button" onClick={closeAdminModals} aria-label="Close modal">
+              <button
+                type="button"
+                onClick={closeAdminModals}
+                aria-label="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2465,10 +2710,16 @@ export default function AdminDashboard() {
                 </>
               )}
 
-              {adminActionError ? <p className="admin-form-error">{adminActionError}</p> : null}
+              {adminActionError ? (
+                <p className="admin-form-error">{adminActionError}</p>
+              ) : null}
 
               <div className="admin-form-actions">
-                <button type="button" className="secondary" onClick={closeAdminModals}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={closeAdminModals}
+                >
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting}>
