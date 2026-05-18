@@ -7,14 +7,16 @@ const { validationResult } = require("express-validator");
 const { sendOtpEmail } = require("../config/mail");
 
 // ================= TOKEN =================
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, {
+const signToken = (id, role) =>
+  jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "esuchiinfo@gmail.com").toLowerCase();
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const getEffectiveRole = (user) =>
+  user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : user.role;
 
 const hasDeliverableEmailDomain = async (email) => {
   const domain = email.split("@")[1];
@@ -134,6 +136,7 @@ exports.verifySignupOtp = async (req, res) => {
     // finalize user
     user.name = name;
     user.password = password; // pre-save hook will hash it
+    user.role = user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user";
     user.signupOtpHash = null;
     user.signupOtpExpires = null;
     user.isActive = true;
@@ -141,7 +144,7 @@ exports.verifySignupOtp = async (req, res) => {
 
     await user.save();
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, getEffectiveRole(user));
 
     res.json({
       success: true,
@@ -150,7 +153,7 @@ exports.verifySignupOtp = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: getEffectiveRole(user),
       },
     });
   } catch (err) {
@@ -190,7 +193,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, getEffectiveRole(user));
 
     res.json({
       success: true,
@@ -199,7 +202,7 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: getEffectiveRole(user),
       },
     });
   } catch (err) {
@@ -459,7 +462,7 @@ exports.updateMe = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: getEffectiveRole(user),
       },
     });
   } catch (err) {
