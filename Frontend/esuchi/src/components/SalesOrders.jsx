@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
@@ -11,10 +11,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
+import { getStoredUser, getUserInitials, isAdminEmail } from "../api/auth";
 import {
   createSalesOrder,
   deleteSalesOrder,
+  getAdminOrders,
   getSalesOrders,
   updateSalesOrderStatus,
 } from "../api/orders";
@@ -42,6 +43,11 @@ const formatDate = (value) => {
 export default function SalesOrders() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
+  const currentUser = useMemo(() => getStoredUser(), []);
+  const isAdminUser = useMemo(
+    () => currentUser?.role === "admin" || isAdminEmail(currentUser?.email),
+    [currentUser],
+  );
   const userInitials = useMemo(() => getUserInitials(), []);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -55,8 +61,40 @@ export default function SalesOrders() {
   const [orderStatus, setOrderStatus] = useState("pending");
   const [form, setForm] = useState({ product: "", quantity: "1" });
 
+  const productById = useMemo(
+    () =>
+      new Map(
+        products
+          .map((product) => [product?._id || product?.id, product])
+          .filter(([id]) => Boolean(id)),
+      ),
+    [products],
+  );
+
+  const getOrderProductName = useCallback((item) => {
+    if (item.product?.name) {
+      return item.product.name;
+    }
+
+    const productId =
+      typeof item.product === "string" ? item.product : item.product?._id;
+
+    return productById.get(productId)?.name || "Unknown product";
+  }, [productById]);
+
+  const getOrderProductSummary = useCallback(
+    (order) =>
+      (order.orderItems ?? [])
+        .map((item) => {
+          const quantity = Number(item.quantity) || 0;
+          return `${getOrderProductName(item)} (${quantity})`;
+        })
+        .join(", "),
+    [getOrderProductName],
+  );
+
   const loadOrders = async () => {
-    const response = await getSalesOrders();
+    const response = isAdminUser ? await getAdminOrders() : await getSalesOrders();
     setOrders(response.data ?? []);
   };
 
@@ -68,7 +106,7 @@ export default function SalesOrders() {
         setIsLoading(true);
         setErrorMessage("");
         const [ordersResponse, productsResponse] = await Promise.all([
-          getSalesOrders(),
+          isAdminUser ? getAdminOrders() : getSalesOrders(),
           getProductListing(),
         ]);
 
@@ -96,7 +134,7 @@ export default function SalesOrders() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAdminUser]);
 
   const filteredOrders = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -106,10 +144,7 @@ export default function SalesOrders() {
     }
 
     return orders.filter((order) => {
-      const productNames = (order.orderItems ?? [])
-        .map((item) => item.product?.name)
-        .filter(Boolean)
-        .join(" ");
+      const productNames = getOrderProductSummary(order);
 
       return [order._id, order.status, productNames]
         .filter(Boolean)
@@ -117,7 +152,7 @@ export default function SalesOrders() {
         .toLowerCase()
         .includes(normalized);
     });
-  }, [orders, searchTerm]);
+  }, [getOrderProductSummary, orders, searchTerm]);
 
   const stats = useMemo(() => {
     const totalRevenue = orders.reduce(
@@ -335,13 +370,7 @@ export default function SalesOrders() {
                   </tr>
                 ) : filteredOrders.length ? (
                   filteredOrders.map((order) => {
-                    const productSummary = (order.orderItems ?? [])
-                      .map((item) =>
-                        item.product?.name
-                          ? `${item.product.name} (${item.quantity})`
-                          : `Unknown product (${item.quantity})`,
-                      )
-                      .join(", ");
+                    const productSummary = getOrderProductSummary(order);
                     const itemCount = (order.orderItems ?? []).reduce(
                       (sum, item) => sum + (Number(item.quantity) || 0),
                       0,

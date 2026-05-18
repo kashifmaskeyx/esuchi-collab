@@ -14,6 +14,8 @@ import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./components/ProfilePage";
 import SalesOrders from "./components/SalesOrders";
 import StaffRoles from "./components/StaffRoles";
+import AdminDashboard from "./components/AdminDashboard";
+import PendingApproval from "./components/PendingApproval";
 import { getStoredUser } from "./api/auth";
 import Returns from "./components/Returns";
 
@@ -26,6 +28,46 @@ const ProtectedRoute = () => {
   return user ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
+const ApprovedRoute = () => {
+  const user = getStoredUser();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.membershipStatus !== "approved") {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  return <Outlet />;
+};
+
+const UserRoute = () => {
+  const currentUser = getStoredUser();
+  const isAdminUser = currentUser?.role === "admin";
+
+  if (isAdminUser) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Outlet />;
+};
+
+const AdminRoute = () => {
+  const currentUser = getStoredUser();
+  const isAdminUser = currentUser?.role === "admin";
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (currentUser.membershipStatus !== "approved") {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  return isAdminUser ? <Outlet /> : <Navigate to="/dashboard" replace />;
+};
+
 function App() {
   return (
     <div>
@@ -35,9 +77,15 @@ function App() {
   <Route path="/forgot-password" element={<ForgotPasswordCard />} />
   <Route path="/otp" element={<OtpCard />} />
   <Route path="/reset-password" element={<ResetPasswordCard />} />
+  <Route path="/pending-approval" element={<PendingApproval />} />
   <Route path="/" element={<LandingPage />} />
+  <Route element={<AdminRoute />}>
+    <Route path="/admin" element={<AdminDashboard />} />
+  </Route>
 
   <Route element={<ProtectedRoute />}>
+    <Route element={<ApprovedRoute />}>
+    <Route element={<UserRoute />}>
       <Route element={<AppShell />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/inventory" element={<Inventory />} />
@@ -53,6 +101,8 @@ function App() {
       <Route path="/discounts" element={<BlankPage />} />
       <Route path="/settings" element={<ProfilePage />} />
       <Route path="/help-center" element={<BlankPage />} />
+      </Route>
+    </Route>
     </Route>
   </Route>
 </Routes>

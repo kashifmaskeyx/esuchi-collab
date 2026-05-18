@@ -2,6 +2,14 @@ const mongoose = require("mongoose");
 const StockMovement = require("../models/stockMovementModel");
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
+const { actorFields, companyQuery } = require("../utils/tenant");
+
+const productQuery = (req, productId) =>
+  companyQuery(req, { _id: productId });
+
+const inventoryQuery = (req, productId) =>
+  companyQuery(req, { product: productId });
 
 const withTransaction = async (handler) => {
   const session = await mongoose.startSession();
@@ -46,10 +54,9 @@ exports.createMovement = async (req, res) => {
     }
 
     const movement = await withTransaction(async (session) => {
-      const inventory = await Inventory.findOne({
-        product,
-        user: req.user._id,
-      }).session(session);
+      const inventory = await Inventory.findOne(
+        inventoryQuery(req, product),
+      ).session(session);
 
       if (!inventory) {
         const error = new Error("Inventory not found");
@@ -57,10 +64,9 @@ exports.createMovement = async (req, res) => {
         throw error;
       }
 
-      const productRecord = await Product.findOne({
-        _id: product,
-        user: req.user._id,
-      }).session(session);
+      const productRecord = await Product.findOne(
+        productQuery(req, product),
+      ).session(session);
 
       if (!productRecord) {
         const error = new Error("Product not found");
@@ -110,7 +116,7 @@ exports.createMovement = async (req, res) => {
         [
           {
             product,
-            user: req.user._id,
+            ...actorFields(req),
             movementType,
             quantity: numericQuantity,
             movementDate: parsedMovementDate,
@@ -120,6 +126,15 @@ exports.createMovement = async (req, res) => {
       );
 
       return createdMovement;
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      newData: movement.toObject ? movement.toObject() : movement,
+      req,
     });
 
     res.status(201).json({
@@ -150,7 +165,7 @@ exports.getMovements = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const query = { user: req.user._id };
+    const query = companyQuery(req);
 
     const totalMovements = await StockMovement.countDocuments(query);
 
@@ -183,7 +198,7 @@ exports.getMovementsByProduct = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const query = { product: req.params.productId, user: req.user._id };
+    const query = companyQuery(req, { product: req.params.productId });
 
     const totalMovements = await StockMovement.countDocuments(query);
 
@@ -212,14 +227,22 @@ exports.getMovementsByProduct = async (req, res) => {
 //
 exports.deleteMovement = async (req, res) => {
   try {
-    const movement = await StockMovement.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const movement = await StockMovement.findOneAndDelete(
+      companyQuery(req, { _id: req.params.id }),
+    );
 
     if (!movement) {
       return res.status(404).json({ message: "Movement not found" });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_STOCK_MOVEMENT",
+      entity: "StockMovement",
+      entityId: movement._id,
+      oldData: movement.toObject ? movement.toObject() : movement,
+      req,
+    });
 
     res.json({ success: true, message: "Movement deleted" });
   } catch (err) {

@@ -9,13 +9,17 @@ const {
   deleteOrder,
 } = require("../controllers/orderController");
 
-const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  adminOnly,
+  requireApprovedCompany,
+} = require("../middlewares/authMiddleware");
 
 // user
-router.post("/", protect, createOrder);
-router.get("/my-orders", protect, getMyOrders);
-router.patch("/:id/status", protect, updateOrderStatus);
-router.delete("/:id", protect, deleteOrder);
+router.post("/", protect, requireApprovedCompany, createOrder);
+router.get("/my-orders", protect, requireApprovedCompany, getMyOrders);
+router.patch("/:id/status", protect, requireApprovedCompany, updateOrderStatus);
+router.delete("/:id", protect, requireApprovedCompany, deleteOrder);
 
 // admin
 router.get("/", protect, adminOnly, getOrders);

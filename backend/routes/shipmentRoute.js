@@ -1,7 +1,7 @@
 // routes/shipmentRoutes.js
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, requireApprovedCompany } = require("../middlewares/authMiddleware");
 const {
   getShipments,
   getShipmentById,
@@ -10,19 +10,21 @@ const {
   deleteShipment,
 } = require("../controllers/shipmentController");
 
+router.use(protect, requireApprovedCompany);
+
 // GET all shipments
-router.get("/", protect, getShipments);
+router.get("/", getShipments);
 
 // GET single shipment
-router.get("/:id", protect, getShipmentById);
+router.get("/:id", getShipmentById);
 
 // POST create shipment
-router.post("/", protect, createShipment);
+router.post("/", createShipment);
 
 // PATCH update shipment status
-router.patch("/:id/status", protect, updateShipmentStatus);
+router.patch("/:id/status", updateShipmentStatus);
 
 // DELETE shipment
-router.delete("/:id", protect, deleteShipment);
+router.delete("/:id", deleteShipment);
 
 module.exports = router;

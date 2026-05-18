@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
+  Check,
   CirclePlus,
+  Copy,
   Pencil,
   Search,
   ShieldCheck,
@@ -11,8 +13,15 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
-import { createStaff, deleteStaff, getStaff, updateStaff } from "../api/staff";
+import { getCurrentUser, getStoredUser, getUserInitials } from "../api/auth";
+import {
+  approveStaff,
+  createStaff,
+  deleteStaff,
+  getStaff,
+  rejectStaff,
+  updateStaff,
+} from "../api/staff";
 import "../css/Operations.css";
 
 const emptyPermissions = {
@@ -40,7 +49,9 @@ const permissionLabels = {
 export default function StaffRoles() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const userInitials = useMemo(() => getUserInitials(), []);
+  const joinCode = currentUser?.company?.joinCode;
   const [staff, setStaff] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +61,7 @@ export default function StaffRoles() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
   const loadStaff = async () => {
     const response = await getStaff();
@@ -85,6 +97,20 @@ export default function StaffRoles() {
 
     loadData();
 
+    const loadUser = async () => {
+      try {
+        const response = await getCurrentUser();
+
+        if (isMounted && response.user) {
+          setCurrentUser(response.user);
+        }
+      } catch {
+        // Keep the locally stored user if the refresh fails.
+      }
+    };
+
+    loadUser();
+
     return () => {
       isMounted = false;
     };
@@ -116,12 +142,14 @@ export default function StaffRoles() {
       },
       {
         label: "Invited",
-        value: staff.filter((member) => member.status === "invited").length,
+        value: staff.filter((member) =>
+          ["invited", "pending"].includes(member.status),
+        ).length,
         icon: CirclePlus,
       },
       {
         label: "Staff Admins",
-        value: staff.filter((member) => member.permissions?.staff).length,
+        value: staff.filter((member) => member.role?.toLowerCase() === "admin").length,
         icon: ShieldCheck,
       },
     ],
@@ -136,6 +164,10 @@ export default function StaffRoles() {
   };
 
   const openEditModal = (member) => {
+    if (member.membershipStatus === "pending") {
+      return;
+    }
+
     setEditingStaff(member);
     setForm({
       name: member.name || "",
@@ -224,6 +256,50 @@ export default function StaffRoles() {
     }
   };
 
+  const handleApprove = async (member) => {
+    try {
+      await approveStaff(member._id);
+      await loadStaff();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to approve staff member.",
+      );
+    }
+  };
+
+  const handleReject = async (member) => {
+    if (!window.confirm(`Reject ${member.name}?`)) {
+      return;
+    }
+
+    try {
+      await rejectStaff(member._id);
+      await loadStaff();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to reject staff member.",
+      );
+    }
+  };
+
+  const handleCopyJoinCode = async () => {
+    if (!joinCode) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setCopiedJoinCode(true);
+      window.setTimeout(() => setCopiedJoinCode(false), 1800);
+    } catch {
+      setErrorMessage("Unable to copy join code.");
+    }
+  };
+
   return (
     <div className="ops-page">
       <main
@@ -253,10 +329,26 @@ export default function StaffRoles() {
             <h2>Right access, right people.</h2>
             <p>Lock down permissions without slowing anyone.</p>
           </div>
-          <button type="button" className="ops-primary-btn" onClick={openCreateModal}>
-            <CirclePlus size={16} />
-            Add Staff
-          </button>
+          <div className="ops-hero-actions">
+            {joinCode ? (
+              <div className="ops-join-code">
+                <span>Join code</span>
+                <strong>{joinCode}</strong>
+                <button
+                  type="button"
+                  className="ops-copy-btn"
+                  onClick={handleCopyJoinCode}
+                  aria-label="Copy company join code"
+                >
+                  {copiedJoinCode ? <Check size={15} /> : <Copy size={15} />}
+                </button>
+              </div>
+            ) : null}
+            <button type="button" className="ops-primary-btn" onClick={openCreateModal}>
+              <CirclePlus size={16} />
+              Add Staff
+            </button>
+          </div>
         </section>
 
         <section className="ops-stats-grid">
@@ -304,6 +396,7 @@ export default function StaffRoles() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Source</th>
                   <th>Permissions</th>
                   <th>Actions</th>
                 </tr>
@@ -311,13 +404,13 @@ export default function StaffRoles() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="ops-table-state">
+                    <td colSpan="7" className="ops-table-state">
                       Loading staff records...
                     </td>
                   </tr>
                 ) : errorMessage ? (
                   <tr>
-                    <td colSpan="6" className="ops-table-state error">
+                    <td colSpan="7" className="ops-table-state error">
                       {errorMessage}
                     </td>
                   </tr>
@@ -338,6 +431,13 @@ export default function StaffRoles() {
                           </span>
                         </td>
                         <td>
+                          {member.membershipStatus === "pending"
+                            ? "Join request"
+                            : member.source === "invite"
+                              ? "Manual invite"
+                              : "Company user"}
+                        </td>
+                        <td>
                           <div className="ops-permission-list">
                             {enabledPermissions.length
                               ? enabledPermissions.map((permission) => (
@@ -350,22 +450,45 @@ export default function StaffRoles() {
                         </td>
                         <td>
                           <div className="ops-row-actions">
-                            <button
-                              type="button"
-                              className="ops-row-btn edit"
-                              onClick={() => openEditModal(member)}
-                            >
-                              <Pencil size={14} />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="ops-row-btn delete"
-                              onClick={() => handleDelete(member)}
-                            >
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
+                            {member.membershipStatus === "pending" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn edit"
+                                  onClick={() => handleApprove(member)}
+                                >
+                                  <UserCheck size={14} />
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn delete"
+                                  onClick={() => handleReject(member)}
+                                >
+                                  <X size={14} />
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn edit"
+                                  onClick={() => openEditModal(member)}
+                                >
+                                  <Pencil size={14} />
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn delete"
+                                  onClick={() => handleDelete(member)}
+                                >
+                                  <Trash2 size={14} />
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -373,7 +496,7 @@ export default function StaffRoles() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="6" className="ops-table-state">
+                    <td colSpan="7" className="ops-table-state">
                       No staff records found.
                     </td>
                   </tr>

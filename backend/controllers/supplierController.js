@@ -1,4 +1,6 @@
 const Supplier = require("../models/supplierModel");
+const createAuditLog = require("../utils/auditLogger");
+const { actorFields, companyQuery } = require("../utils/tenant");
 
 // CREATE supplier
 exports.createSupplier = async (req, res) => {
@@ -18,7 +20,16 @@ exports.createSupplier = async (req, res) => {
       contactPerson,
       phone,
       email,
-      user: req.user._id,
+      ...actorFields(req),
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_SUPPLIER",
+      entity: "Supplier",
+      entityId: supplier._id,
+      newData: supplier.toObject ? supplier.toObject() : supplier,
+      req,
     });
 
     res.status(201).json({
@@ -40,7 +51,7 @@ exports.getSuppliers = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const query = { user: req.user._id };
+    const query = companyQuery(req);
     const shouldPaginate = req.query.page !== undefined;
 
     const totalSuppliers = await Supplier.countDocuments(query);
@@ -74,7 +85,7 @@ exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({
       _id: req.params.id,
-      user: req.user._id,
+      company: companyQuery(req).company,
     });
 
     if (!supplier) {
@@ -103,7 +114,7 @@ exports.updateSupplier = async (req, res) => {
 
     const supplier = await Supplier.findOne({
       _id: req.params.id,
-      user: req.user._id,
+      company: companyQuery(req).company,
     });
 
     if (!supplier) {
@@ -113,6 +124,8 @@ exports.updateSupplier = async (req, res) => {
       });
     }
 
+    const oldSupplier = supplier.toObject ? supplier.toObject() : supplier;
+
     // Update fields only if provided
     if (name) supplier.name = name;
     if (contactPerson) supplier.contactPerson = contactPerson;
@@ -120,6 +133,16 @@ exports.updateSupplier = async (req, res) => {
     if (email) supplier.email = email;
 
     await supplier.save();
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_SUPPLIER",
+      entity: "Supplier",
+      entityId: supplier._id,
+      oldData: oldSupplier,
+      newData: supplier.toObject ? supplier.toObject() : supplier,
+      req,
+    });
 
     res.json({
       success: true,
@@ -138,7 +161,7 @@ exports.deleteSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findOneAndDelete({
       _id: req.params.id,
-      user: req.user._id,
+      company: companyQuery(req).company,
     });
 
     if (!supplier) {
@@ -147,6 +170,15 @@ exports.deleteSupplier = async (req, res) => {
         message: "Supplier not found",
       });
     }
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_SUPPLIER",
+      entity: "Supplier",
+      entityId: supplier._id,
+      oldData: supplier.toObject ? supplier.toObject() : supplier,
+      req,
+    });
 
     res.json({
       success: true,

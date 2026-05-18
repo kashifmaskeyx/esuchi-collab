@@ -13,6 +13,12 @@ const returnSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+      index: true,
+    },
     order: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",

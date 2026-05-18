@@ -23,6 +23,21 @@ export const updateStaff = async (id, payload) => {
   return response.data;
 };
 
+export const approveStaff = async (id) => {
+  const response = await API.patch(`/staff/${id}/approve`);
+  return response.data;
+};
+
+export const rejectStaff = async (id) => {
+  const response = await API.patch(`/staff/${id}/reject`);
+  return response.data;
+};
+
+export const suspendStaff = async (id) => {
+  const response = await API.patch(`/staff/${id}/suspend`);
+  return response.data;
+};
+
 export const deleteStaff = async (id) => {
   const response = await API.delete(`/staff/${id}`);
   return response.data;

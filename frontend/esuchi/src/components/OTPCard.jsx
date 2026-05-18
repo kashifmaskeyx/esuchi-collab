@@ -24,6 +24,8 @@ export default function OtpCard() {
   const source = location.state?.source;
   const name = location.state?.name;
   const password = location.state?.password;
+  const companyName = location.state?.companyName;
+  const joinCode = location.state?.joinCode;
 
   const isForgotPasswordFlow = source === "forgot-password";
   const isSignupFlow = source === "signup";
@@ -74,13 +76,22 @@ export default function OtpCard() {
 
     try {
       if (isSignupFlow) {
-        await verifySignupOtp({
+        const response = await verifySignupOtp({
           email,
           otp: code,
           name,
           password,
+          companyName,
+          joinCode,
         });
-        navigate("/dashboard", { replace: true });
+        if (response.requiresApproval) {
+          navigate("/pending-approval", { replace: true });
+          return;
+        }
+
+        navigate(response.user?.role === "admin" ? "/admin" : "/dashboard", {
+          replace: true,
+        });
         return;
       }
 

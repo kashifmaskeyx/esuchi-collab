@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const Inventory = require("../models/inventoryModel");
 const Product = require("../models/productModel");
+const createAuditLog = require("../utils/auditLogger");
+const { actorFields, companyQuery } = require("../utils/tenant");
 
 const withTransaction = async (handler) => {
   const session = await mongoose.startSession();
@@ -40,7 +42,7 @@ exports.createInventory = async (req, res) => {
     const inventory = await withTransaction(async (session) => {
       const productRecord = await Product.findOne({
         _id: product,
-        user: req.user._id,
+        company: companyQuery(req).company,
       }).session(session);
 
       if (!productRecord) {
@@ -51,7 +53,7 @@ exports.createInventory = async (req, res) => {
 
       const existing = await Inventory.findOne({
         product,
-        user: req.user._id,
+        company: companyQuery(req).company,
       }).session(session);
 
       if (existing) {
@@ -64,7 +66,7 @@ exports.createInventory = async (req, res) => {
         [
           {
             product,
-            user: req.user._id,
+            ...actorFields(req),
             currentStock: numericStock,
             minimumStock: numericMinimumStock,
           },
@@ -76,6 +78,15 @@ exports.createInventory = async (req, res) => {
       await productRecord.save({ session });
 
       return createdInventory;
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_INVENTORY",
+      entity: "Inventory",
+      entityId: inventory._id,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
     });
 
     res.status(201).json({ success: true, data: inventory });
@@ -95,7 +106,7 @@ exports.getInventories = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const query = { user: req.user._id };
+    const query = companyQuery(req);
     const shouldPaginate = req.query.page !== undefined;
 
     const totalInventories = await Inventory.countDocuments(query);
@@ -128,10 +139,9 @@ exports.getInventories = async (req, res) => {
 //
 exports.getInventoryById = async (req, res) => {
   try {
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    }).populate("product", "name price");
+    const inventory = await Inventory.findOne(
+      companyQuery(req, { _id: req.params.id }),
+    ).populate("product", "name price");
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
@@ -157,32 +167,43 @@ exports.updateStock = async (req, res) => {
         .json({ message: "Current stock must be 0 or greater" });
     }
 
-    const inventory = await withTransaction(async (session) => {
-      const updatedInventory = await Inventory.findOneAndUpdate(
-        {
-          _id: req.params.id,
-          user: req.user._id,
-        },
-        {
-          currentStock: numericStock,
-          lastUpdated: Date.now(),
-        },
-        { new: true, runValidators: true, session },
-      );
+    const { inventory, oldInventory } = await withTransaction(async (session) => {
+      const existingInventory = await Inventory.findOne(
+        companyQuery(req, { _id: req.params.id }),
+      ).session(session);
 
-      if (!updatedInventory) {
+      if (!existingInventory) {
         const error = new Error("Inventory not found");
         error.statusCode = 404;
         throw error;
       }
 
+      const previousInventory = existingInventory.toObject();
+
+      existingInventory.currentStock = numericStock;
+      existingInventory.lastUpdated = Date.now();
+      await existingInventory.save({ session });
+
       await Product.findOneAndUpdate(
-        { _id: updatedInventory.product, user: req.user._id },
+        companyQuery(req, { _id: existingInventory.product }),
         { quantity: numericStock },
         { runValidators: true, session },
       );
 
-      return updatedInventory;
+      return {
+        inventory: existingInventory,
+        oldInventory: previousInventory,
+      };
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_INVENTORY_STOCK",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: oldInventory,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
     });
 
     res.json({ success: true, data: inventory });
@@ -207,19 +228,30 @@ exports.updateMinimumStock = async (req, res) => {
         .json({ message: "Minimum stock must be 0 or greater" });
     }
 
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const inventory = await Inventory.findOne(
+      companyQuery(req, { _id: req.params.id }),
+    );
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
+    const oldInventory = inventory.toObject ? inventory.toObject() : inventory;
+
     inventory.minimumStock = numericMinimumStock;
     inventory.lastUpdated = Date.now();
 
     await inventory.save();
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_INVENTORY_MINIMUM",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: oldInventory,
+      newData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
+    });
 
     res.json({ success: true, data: inventory });
   } catch (err) {
@@ -232,19 +264,17 @@ exports.updateMinimumStock = async (req, res) => {
 //
 exports.deleteInventory = async (req, res) => {
   try {
-    const inventory = await Inventory.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const inventory = await Inventory.findOne(
+      companyQuery(req, { _id: req.params.id }),
+    );
 
     if (!inventory) {
       return res.status(404).json({ message: "Inventory not found" });
     }
 
-    const product = await Product.exists({
-      _id: inventory.product,
-      user: req.user._id,
-    });
+    const product = await Product.exists(
+      companyQuery(req, { _id: inventory.product }),
+    );
 
     if (product) {
       return res.status(409).json({
@@ -253,9 +283,15 @@ exports.deleteInventory = async (req, res) => {
       });
     }
 
-    await Inventory.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
+    await Inventory.findOneAndDelete(companyQuery(req, { _id: req.params.id }));
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_INVENTORY",
+      entity: "Inventory",
+      entityId: inventory._id,
+      oldData: inventory.toObject ? inventory.toObject() : inventory,
+      req,
     });
 
     res.json({ success: true, message: "Inventory deleted" });

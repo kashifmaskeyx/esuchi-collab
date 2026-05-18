@@ -18,7 +18,24 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    role: { type: String, enum: ["admin", "user"], default: "user" },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      index: true,
+      default: null,
+    },
+
+    role: {
+      type: String,
+      enum: ["admin", "manager", "staff", "viewer", "user"],
+      default: "staff",
+    },
+    membershipStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+      index: true,
+    },
     isActive: { type: Boolean, default: true },
 
     passwordResetOtpHash: {

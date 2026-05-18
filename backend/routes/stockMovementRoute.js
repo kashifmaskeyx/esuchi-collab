@@ -8,9 +8,9 @@ const {
   deleteMovement,
 } = require("../controllers/stockMovementController");
 
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, requireApprovedCompany } = require("../middlewares/authMiddleware");
 
-router.use(protect);
+router.use(protect, requireApprovedCompany);
 
 router.post("/", createMovement);
 router.get("/", getMovements);

@@ -9,6 +9,23 @@ const API = axios.create({
   },
 });
 
+export const ADMIN_EMAIL = "esuchiinfo@gmail.com";
+
+export const isAdminEmail = (email) =>
+  email?.trim().toLowerCase() === ADMIN_EMAIL;
+
+const getAuthConfig = () => {
+  const token = localStorage.getItem("token");
+
+  return token
+    ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    : {};
+};
+
 const persistAuthToken = (data) => {
   if (data?.user) {
     localStorage.setItem("currentUser", JSON.stringify(data.user));
@@ -107,6 +124,38 @@ export const updateCurrentUser = async (data) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Profile update failed" };
+  }
+};
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await API.get("/auth/me", getAuthConfig());
+    persistUser(response.data?.user);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load profile" };
+  }
+};
+
+export const getAdminUsers = async () => {
+  try {
+    const response = await API.get("/auth/users", getAuthConfig());
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to load users" };
+  }
+};
+
+export const updateAdminUserRole = async (id, role) => {
+  try {
+    const response = await API.patch(
+      `/auth/users/${id}/role`,
+      { role },
+      getAuthConfig(),
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to update user role" };
   }
 };
 

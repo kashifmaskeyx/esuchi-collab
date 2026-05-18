@@ -27,13 +27,19 @@ export default function LoginCard() {
     setError("");
     setLoading(true);
     try {
-      await loginUser(form);
+      const response = await loginUser(form);
+      const isAdminLogin = response.user?.role === "admin";
+      const isPending = response.requiresApproval;
       saveLoginNotification({
-        title: "Login successful",
-        message: "Welcome back. Your dashboard is ready.",
-        tone: "success",
+        title: isPending ? "Approval pending" : "Login successful",
+        message: isPending
+          ? "Your company admin still needs to approve your account."
+          : isAdminLogin
+          ? "Welcome back. Your admin page is ready."
+          : "Welcome back. Your dashboard is ready.",
+        tone: isPending ? "info" : "success",
       });
-      navigate("/dashboard", {
+      navigate(isPending ? "/pending-approval" : isAdminLogin ? "/admin" : "/dashboard", {
         state: {
           openNotifications: true,
         },

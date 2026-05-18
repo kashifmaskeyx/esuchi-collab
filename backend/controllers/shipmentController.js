@@ -2,6 +2,8 @@
 const Shipment = require("../models/shipmentModel");
 const Product = require("../models/productModel");
 const Supplier = require("../models/supplierModel");
+const createAuditLog = require("../utils/auditLogger");
+const { companyQuery, createdByFields } = require("../utils/tenant");
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
@@ -11,9 +13,8 @@ exports.getShipments = async (req, res) => {
     const limit = 10;
     const skip = (parseInt(page) - 1) * limit;
 
-    // filter to the authenticated user's shipments
     const query = {
-      createdBy: req.user._id,
+      company: companyQuery(req).company,
       ...(status ? { status } : {}),
     };
 
@@ -45,7 +46,7 @@ exports.getShipmentById = async (req, res) => {
   try {
     const shipment = await Shipment.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      company: companyQuery(req).company,
     })
       .populate("products.product", "name code unit")
       .populate("createdBy", "name");
@@ -66,10 +67,9 @@ exports.createShipment = async (req, res) => {
   try {
     const { supplier, products } = req.body;
 
-    const supplierRecord = await Supplier.findOne({
-      _id: supplier,
-      user: req.user._id,
-    });
+    const supplierRecord = await Supplier.findOne(
+      companyQuery(req, { _id: supplier }),
+    );
 
     if (!supplierRecord) {
       return res
@@ -92,10 +92,9 @@ exports.createShipment = async (req, res) => {
     }
 
     const uniqueProductIds = [...new Set(productIds.map(String))];
-    const userProductsCount = await Product.countDocuments({
-      _id: { $in: uniqueProductIds },
-      user: req.user._id,
-    });
+    const productQuery = companyQuery(req, { _id: { $in: uniqueProductIds } });
+
+    const userProductsCount = await Product.countDocuments(productQuery);
 
     if (userProductsCount !== uniqueProductIds.length) {
       return res
@@ -105,8 +104,18 @@ exports.createShipment = async (req, res) => {
 
     const shipment = await Shipment.create({
       ...req.body,
-      createdBy: req.user._id,
+      ...createdByFields(req),
     });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_SHIPMENT",
+      entity: "Shipment",
+      entityId: shipment._id,
+      newData: shipment.toObject ? shipment.toObject() : shipment,
+      req,
+    });
+
     res.status(201).json({ success: true, data: shipment });
   } catch (err) {
     res.status(400).json({ success: false, message: "Unable to create shipment" });
@@ -125,16 +134,31 @@ exports.updateShipmentStatus = async (req, res) => {
         .json({ success: false, message: "Invalid status value" });
     }
 
+    const oldShipment = await Shipment.findOne({
+      _id: req.params.id,
+      company: companyQuery(req).company,
+    });
+
+    if (!oldShipment)
+      return res
+        .status(404)
+        .json({ success: false, message: "Shipment not found" });
+
     const shipment = await Shipment.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      companyQuery(req, { _id: req.params.id }),
       { status },
       { new: true },
     );
 
-    if (!shipment)
-      return res
-        .status(404)
-        .json({ success: false, message: "Shipment not found" });
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_SHIPMENT_STATUS",
+      entity: "Shipment",
+      entityId: shipment._id,
+      oldData: oldShipment.toObject(),
+      newData: shipment.toObject(),
+      req,
+    });
 
     res.json({ success: true, data: shipment });
   } catch (err) {
@@ -145,15 +169,23 @@ exports.updateShipmentStatus = async (req, res) => {
 // DELETE shipment
 exports.deleteShipment = async (req, res) => {
   try {
-    const shipment = await Shipment.findOneAndDelete({
-      _id: req.params.id,
-      createdBy: req.user._id,
-    });
+    const query = companyQuery(req, { _id: req.params.id });
+
+    const shipment = await Shipment.findOneAndDelete(query);
 
     if (!shipment)
       return res
         .status(404)
         .json({ success: false, message: "Shipment not found" });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_SHIPMENT",
+      entity: "Shipment",
+      entityId: shipment._id,
+      oldData: shipment.toObject ? shipment.toObject() : shipment,
+      req,
+    });
 
     res.json({ success: true, message: "Shipment deleted" });
   } catch (err) {

@@ -22,6 +22,13 @@ const inventorySchema = new mongoose.Schema(
       index: true,
     },
 
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+      index: true,
+    },
+
     currentStock: {
       type: Number,
       required: true,

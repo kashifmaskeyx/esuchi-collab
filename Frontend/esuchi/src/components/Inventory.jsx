@@ -82,16 +82,37 @@ const getMovementBadgeClass = (movementType) => {
   return "inventory-movement-badge";
 };
 
-const getMovementLabel = (movementType) => {
-  const labels = {
-    IN: "Stock In",
-    OUT: "Stock Out",
-    ADJUSTMENT: "Adjustment",
-    RETURN: "Return",
-    DAMAGED: "Damaged",
-  };
+const normalizeMovementType = (movementType) => {
+  const normalizedType = String(movementType || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
 
-  return labels[movementType] || movementType || "-";
+  if (["OUT", "STOCK_OUT"].includes(normalizedType)) {
+    return "OUT";
+  }
+
+  if (["IN", "STOCK_IN"].includes(normalizedType)) {
+    return "IN";
+  }
+
+  return normalizedType;
+};
+
+const getMovementLabel = (movementType) => {
+  if (movementType === "IN") {
+    return "Stock In";
+  }
+
+  if (movementType === "OUT") {
+    return "Stock Out";
+  }
+
+  if (movementType === "ADJUSTMENT") {
+    return "Adjustment";
+  }
+
+  return "Unknown";
 };
 
 export default function Inventory() {
@@ -244,7 +265,7 @@ export default function Inventory() {
         id: movement._id,
         movementId: movement.movementId || movement._id,
         productName: movement.product?.name || "Unknown product",
-        movementType: movement.movementType || "-",
+        movementType: normalizeMovementType(movement.movementType),
         quantity: Number(movement.quantity) || 0,
         movementDate: movement.movementDate || movement.createdAt,
         createdBy: movement.user?.name || "Unknown user",
@@ -711,8 +732,7 @@ export default function Inventory() {
               <option value="all">All movement types</option>
               <option value="IN">Stock In</option>
               <option value="OUT">Stock Out</option>
-              <option value="RETURN">Returns</option>
-              <option value="DAMAGED">Damaged / Loss</option>
+              <option value="ADJUSTMENT">Adjustment</option>
             </select>
           </div>
 

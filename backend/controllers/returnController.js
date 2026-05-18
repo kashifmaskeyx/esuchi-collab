@@ -4,6 +4,7 @@ const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const Inventory = require("../models/inventoryModel");
 const StockMovement = require("../models/stockMovementModel");
+const { actorFields, companyQuery, getCompanyId } = require("../utils/tenant");
 
 const withTransaction = async (handler) => {
   const session = await mongoose.startSession();
@@ -19,13 +20,18 @@ const withTransaction = async (handler) => {
   }
 };
 
-const getReturnedQuantityForOrderItem = async (orderId, productId, userId, session) => {
+const getReturnedQuantityForOrderItem = async (
+  orderId,
+  productId,
+  companyId,
+  session,
+) => {
   const totals = await Return.aggregate([
     {
       $match: {
         order: new mongoose.Types.ObjectId(orderId),
         product: new mongoose.Types.ObjectId(productId),
-        user: new mongoose.Types.ObjectId(userId),
+        company: new mongoose.Types.ObjectId(companyId),
       },
     },
     { $group: { _id: null, quantity: { $sum: "$quantity" } } },
@@ -102,7 +108,7 @@ exports.createReturn = async (req, res) => {
     const returnRecord = await withTransaction(async (session) => {
       const productRecord = await Product.findOne({
         _id: product,
-        user: req.user._id,
+        company: getCompanyId(req),
       }).session(session);
 
       if (!productRecord) {
@@ -116,7 +122,7 @@ exports.createReturn = async (req, res) => {
       if (order) {
         orderRecord = await Order.findOne({
           _id: order,
-          user: req.user._id,
+          company: getCompanyId(req),
         }).session(session);
 
         if (!orderRecord) {
@@ -138,7 +144,7 @@ exports.createReturn = async (req, res) => {
         const alreadyReturned = await getReturnedQuantityForOrderItem(
           order,
           product,
-          req.user._id,
+          getCompanyId(req),
           session,
         );
 
@@ -153,7 +159,7 @@ exports.createReturn = async (req, res) => {
 
       if (shouldRestock) {
         const inventory = await Inventory.findOneAndUpdate(
-          { product, user: req.user._id },
+          companyQuery(req, { product }),
           {
             $inc: { currentStock: numericQuantity },
             lastUpdated: Date.now(),
@@ -174,7 +180,7 @@ exports.createReturn = async (req, res) => {
       const [createdReturn] = await Return.create(
         [
           {
-            user: req.user._id,
+            ...actorFields(req),
             order: orderRecord?._id || null,
             product,
             quantity: numericQuantity,
@@ -192,7 +198,7 @@ exports.createReturn = async (req, res) => {
         [
           {
             product,
-            user: req.user._id,
+            ...actorFields(req),
             movementType: shouldRestock ? "RETURN" : "DAMAGED",
             quantity: numericQuantity,
             movementDate: new Date(),
@@ -206,7 +212,7 @@ exports.createReturn = async (req, res) => {
 
     const populatedReturn = await Return.findOne({
       _id: returnRecord._id,
-      user: req.user._id,
+      company: getCompanyId(req),
     })
       .populate("product", "name price")
       .populate("order", "orderDate status totalAmount");
@@ -222,7 +228,7 @@ exports.createReturn = async (req, res) => {
 
 exports.getReturns = async (req, res) => {
   try {
-    const returns = await Return.find({ user: req.user._id })
+    const returns = await Return.find(companyQuery(req))
       .populate("product", "name price")
       .populate("order", "orderDate status totalAmount")
       .sort("-createdAt");

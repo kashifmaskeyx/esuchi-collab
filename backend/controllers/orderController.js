@@ -2,6 +2,23 @@ const mongoose = require("mongoose");
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const Inventory = require("../models/inventoryModel");
+const createAuditLog = require("../utils/auditLogger");
+const {
+  actorFields,
+  companyQuery,
+  isCompanyAdmin,
+} = require("../utils/tenant");
+
+const orderAccessQuery = (req, query = {}) =>
+  isCompanyAdmin(req)
+    ? companyQuery(req, query)
+    : companyQuery(req, { ...query, user: req.user._id });
+
+const productQuery = (req, productId) =>
+  companyQuery(req, { _id: productId });
+
+const inventoryQuery = (req, productId, extra = {}) =>
+  companyQuery(req, { product: productId, ...extra });
 
 const withTransaction = async (handler) => {
   const session = await mongoose.startSession();
@@ -48,11 +65,11 @@ const buildOrderItems = (orderItems) => {
   return Array.from(itemsByProduct.values());
 };
 
-const restoreStock = async (items, userId, session) => {
+const restoreStock = async (items, req, session) => {
   await Promise.all(
     items.map(async (item) => {
       const inventory = await Inventory.findOneAndUpdate(
-        { product: item.product, user: userId },
+        inventoryQuery(req, item.product),
         {
           $inc: { currentStock: item.quantity },
           lastUpdated: Date.now(),
@@ -62,7 +79,7 @@ const restoreStock = async (items, userId, session) => {
 
       if (inventory) {
         await Product.findOneAndUpdate(
-          { _id: item.product, user: userId },
+          productQuery(req, item.product),
           { quantity: inventory.currentStock },
           { runValidators: true, session },
         );
@@ -84,21 +101,19 @@ exports.createOrder = async (req, res) => {
       const itemsWithPrice = [];
 
       for (const item of normalizedItems) {
-        const product = await Product.findOne({
-          _id: item.product,
-          user: req.user._id,
-        }).session(session);
-
-        const inventory = await Inventory.findOne({
-          product: item.product,
-          user: req.user._id,
-        }).session(session);
+        const product = await Product.findOne(
+          productQuery(req, item.product),
+        ).session(session);
 
         if (!product) {
           const error = new Error(`Product not found: ${item.product}`);
           error.statusCode = 404;
           throw error;
         }
+
+        const inventory = await Inventory.findOne(
+          inventoryQuery(req, item.product),
+        ).session(session);
 
         if (!inventory) {
           const error = new Error(`Inventory not found for product: ${product.name}`);
@@ -139,11 +154,9 @@ exports.createOrder = async (req, res) => {
 
       for (const item of itemsWithPrice) {
         const inventory = await Inventory.findOneAndUpdate(
-          {
-            product: item.product,
-            user: req.user._id,
+          inventoryQuery(req, item.product, {
             currentStock: { $gte: item.quantity },
-          },
+          }),
           {
             $inc: { currentStock: -item.quantity },
             lastUpdated: Date.now(),
@@ -158,7 +171,7 @@ exports.createOrder = async (req, res) => {
         }
 
         await Product.findOneAndUpdate(
-          { _id: item.product, user: req.user._id },
+          productQuery(req, item.product),
           { quantity: inventory.currentStock },
           { runValidators: true, session },
         );
@@ -167,7 +180,7 @@ exports.createOrder = async (req, res) => {
       const [createdOrder] = await Order.create(
         [
           {
-            user: req.user._id,
+            ...actorFields(req),
             orderItems: itemsWithPrice,
             totalAmount,
           },
@@ -176,6 +189,15 @@ exports.createOrder = async (req, res) => {
       );
 
       return createdOrder;
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "CREATE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      newData: order.toObject ? order.toObject() : order,
+      req,
     });
 
     res.status(201).json({
@@ -189,15 +211,12 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-//admin
 exports.getOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-
-    const query = { user: req.user._id };
-
+    const query = companyQuery(req);
     const totalOrders = await Order.countDocuments(query);
 
     const orders = await Order.find(query)
@@ -219,15 +238,13 @@ exports.getOrders = async (req, res) => {
     res.status(500).json({ message: "Unable to load orders" });
   }
 };
-//user
+
 exports.getMyOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-
-    const query = { user: req.user._id };
-
+    const query = companyQuery(req, { user: req.user._id });
     const totalOrders = await Order.countDocuments(query);
 
     const orders = await Order.find(query)
@@ -248,25 +265,34 @@ exports.getMyOrders = async (req, res) => {
     res.status(500).json({ message: "Unable to load orders" });
   }
 };
-//admin update
+
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-
     const allowed = ["pending", "shipped", "delivered"];
+
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, user: req.user._id },
-      { status },
-      { new: true },
-    );
+    const query = orderAccessQuery(req, { _id: req.params.id });
+    const oldOrder = await Order.findOne(query);
 
-    if (!order) {
+    if (!oldOrder) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    const order = await Order.findOneAndUpdate(query, { status }, { new: true });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "UPDATE_ORDER_STATUS",
+      entity: "Order",
+      entityId: order._id,
+      oldData: oldOrder.toObject ? oldOrder.toObject() : oldOrder,
+      newData: order.toObject ? order.toObject() : order,
+      req,
+    });
 
     res.json({
       success: true,
@@ -276,22 +302,31 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Unable to update order status" });
   }
 };
-//amin delete
+
 exports.deleteOrder = async (req, res) => {
   try {
-    await withTransaction(async (session) => {
-      const order = await Order.findOneAndDelete({
-        _id: req.params.id,
-        user: req.user._id,
-      }).session(session);
+    const order = await withTransaction(async (session) => {
+      const deletedOrder = await Order.findOneAndDelete(
+        orderAccessQuery(req, { _id: req.params.id }),
+      ).session(session);
 
-      if (!order) {
+      if (!deletedOrder) {
         const error = new Error("Order not found");
         error.statusCode = 404;
         throw error;
       }
 
-      await restoreStock(order.orderItems, req.user._id, session);
+      await restoreStock(deletedOrder.orderItems, req, session);
+      return deletedOrder;
+    });
+
+    await createAuditLog({
+      userId: req.user._id,
+      action: "DELETE_ORDER",
+      entity: "Order",
+      entityId: order._id,
+      oldData: order.toObject ? order.toObject() : order,
+      req,
     });
 
     res.json({

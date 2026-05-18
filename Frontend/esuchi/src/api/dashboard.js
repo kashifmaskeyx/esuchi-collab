@@ -8,6 +8,16 @@ const API = axios.create({
   },
 });
 
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 const getProductsFromResponse = (data) => {
   if (Array.isArray(data)) {
     return data;
@@ -16,21 +26,45 @@ const getProductsFromResponse = (data) => {
   return Array.isArray(data?.products) ? data.products : [];
 };
 
+const getDataRowsFromResponse = (data) => (Array.isArray(data?.data) ? data.data : []);
+
+const getAllPaginatedRows = async (endpoint, getRows) => {
+  const firstResponse = await API.get(endpoint);
+  const firstData = firstResponse.data;
+  const totalPages = Number(firstData?.totalPages) || 1;
+  const rows = [...getRows(firstData)];
+
+  if (totalPages <= 1) {
+    return rows;
+  }
+
+  const remainingResponses = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      API.get(endpoint, { params: { page: index + 2 } }),
+    ),
+  );
+
+  remainingResponses.forEach((response) => {
+    rows.push(...getRows(response.data));
+  });
+
+  return rows;
+};
+
 export const getDashboardData = async () => {
-  const [productsResponse, inventoryResponse, movementsResponse, ordersResponse, returnsResponse] =
-    await Promise.all([
-      API.get("/products"),
-      API.get("/inventory"),
-      API.get("/stock-movements"),
-      API.get("/orders/my-orders"),
-      API.get("/returns").catch(() => ({ data: { data: [] } })),
-    ]);
+  const [products, inventory, stockMovements, orders, returns] = await Promise.all([
+    getAllPaginatedRows("/products", getProductsFromResponse),
+    getAllPaginatedRows("/inventory", getDataRowsFromResponse),
+    getAllPaginatedRows("/stock-movements", getDataRowsFromResponse),
+    getAllPaginatedRows("/orders", getDataRowsFromResponse),
+    getAllPaginatedRows("/returns", getDataRowsFromResponse),
+  ]);
 
   return {
-    products: getProductsFromResponse(productsResponse.data),
-    inventory: inventoryResponse.data?.data ?? [],
-    stockMovements: movementsResponse.data?.data ?? [],
-    orders: ordersResponse.data?.data ?? [],
-    returns: returnsResponse.data?.data ?? [],
+    products,
+    inventory,
+    stockMovements,
+    orders,
+    returns,
   };
 };
