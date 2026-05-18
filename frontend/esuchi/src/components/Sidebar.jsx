@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import logo from "../assets/logo.png";
 import logoIn from "../assets/LogoIn.png";
 import {
@@ -9,11 +9,9 @@ import {
   ShoppingCart,
   Truck,
   Boxes,
-  LogOut,
   PanelLeftClose,
   X,
 } from "lucide-react";
-import { logoutUser } from "../api/auth";
 import "../css/Sidebar.css";
 
 const mainItems = [
@@ -26,7 +24,6 @@ const mainItems = [
 ];
 
 function Sidebar({ isOpen, onClose, onToggle }) {
-  const navigate = useNavigate();
   const handleNavClick = () => {
     if (window.innerWidth <= 980) {
       onClose();
@@ -36,11 +33,18 @@ function Sidebar({ isOpen, onClose, onToggle }) {
   return (
     <aside className={`sidebar-panel ${isOpen ? "open" : "closed"}`}>
       <div className="sidebar-header">
-        <img
-          src={isOpen ? logo : logoIn}
-          alt="eSuchi"
-          className={`sidebar-logo ${isOpen ? "expanded" : "collapsed"}`}
-        />
+        <NavLink
+          to="/dashboard"
+          className="sidebar-logo-link"
+          onClick={handleNavClick}
+          aria-label="Go to dashboard"
+        >
+          <img
+            src={isOpen ? logo : logoIn}
+            alt="eSuchi"
+            className={`sidebar-logo ${isOpen ? "expanded" : "collapsed"}`}
+          />
+        </NavLink>
         <button
           className="sidebar-mini-btn"
           type="button"
@@ -75,18 +79,6 @@ function Sidebar({ isOpen, onClose, onToggle }) {
           </ul>
         </div>
       </nav>
-
-      <button
-        type="button"
-        className="sidebar-logout-btn"
-        onClick={() => {
-          logoutUser();
-          navigate("/login");
-        }}
-      >
-        <LogOut size={17} />
-        <span>Logout</span>
-      </button>
     </aside>
   );
 }

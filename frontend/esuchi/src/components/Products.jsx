@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -9,7 +9,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import {
   createInventory,
   createProduct,
@@ -21,6 +20,7 @@ import {
   updateProduct,
 } from "../api/products";
 import Pagination from "./Pagination";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Products.css";
 
 const getProductCode = (product, inventory) => {
@@ -54,8 +54,6 @@ const readLoginNotification = () => {
 
 export default function Products() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -420,14 +418,7 @@ export default function Products() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="products-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 
