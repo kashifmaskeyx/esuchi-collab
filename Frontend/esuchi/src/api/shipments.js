@@ -2,20 +2,19 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const getProductsFromResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data;
   }
 
-  return config;
-});
+  return Array.isArray(data?.products) ? data.products : [];
+};
 
 export const getShipments = async () => {
   const response = await API.get("/shipments");
@@ -29,7 +28,7 @@ export const getSuppliers = async () => {
 
 export const getProducts = async () => {
   const response = await API.get("/products");
-  return response.data;
+  return getProductsFromResponse(response.data);
 };
 
 export const createShipment = async (payload) => {
