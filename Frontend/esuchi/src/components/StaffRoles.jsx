@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
+  Check,
   CirclePlus,
+  Copy,
   Pencil,
   Search,
   ShieldCheck,
@@ -11,8 +13,15 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { createStaff, deleteStaff, getStaff, updateStaff } from "../api/staff";
-import UserProfileMenu from "./UserProfileMenu";
+import { getCurrentUser, getStoredUser, getUserInitials } from "../api/auth";
+import {
+  approveStaff,
+  createStaff,
+  deleteStaff,
+  getStaff,
+  rejectStaff,
+  updateStaff,
+} from "../api/staff";
 import "../css/Operations.css";
 
 const emptyPermissions = {
@@ -39,6 +48,10 @@ const permissionLabels = {
 
 export default function StaffRoles() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const userInitials = useMemo(() => getUserInitials(), []);
+  const joinCode = currentUser?.company?.joinCode;
   const [staff, setStaff] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +61,7 @@ export default function StaffRoles() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
   const loadStaff = async () => {
     const response = await getStaff();
@@ -83,6 +97,20 @@ export default function StaffRoles() {
 
     loadData();
 
+    const loadUser = async () => {
+      try {
+        const response = await getCurrentUser();
+
+        if (isMounted && response.user) {
+          setCurrentUser(response.user);
+        }
+      } catch {
+        // Keep the locally stored user if the refresh fails.
+      }
+    };
+
+    loadUser();
+
     return () => {
       isMounted = false;
     };
@@ -114,12 +142,15 @@ export default function StaffRoles() {
       },
       {
         label: "Invited",
-        value: staff.filter((member) => member.status === "invited").length,
+        value: staff.filter((member) =>
+          ["invited", "pending"].includes(member.status),
+        ).length,
         icon: CirclePlus,
       },
       {
         label: "Staff Admins",
-        value: staff.filter((member) => member.permissions?.staff).length,
+        value: staff.filter((member) => member.role?.toLowerCase() === "admin")
+          .length,
         icon: ShieldCheck,
       },
     ],
@@ -134,7 +165,7 @@ export default function StaffRoles() {
   };
 
   const openEditModal = (member) => {
-    if (member.source === "admin-assigned") {
+    if (member.membershipStatus === "pending") {
       return;
     }
 
@@ -210,10 +241,6 @@ export default function StaffRoles() {
   };
 
   const handleDelete = async (member) => {
-    if (member.source === "admin-assigned") {
-      return;
-    }
-
     if (!window.confirm(`Remove ${member.name}?`)) {
       return;
     }
@@ -230,6 +257,50 @@ export default function StaffRoles() {
     }
   };
 
+  const handleApprove = async (member) => {
+    try {
+      await approveStaff(member._id);
+      await loadStaff();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to approve staff member.",
+      );
+    }
+  };
+
+  const handleReject = async (member) => {
+    if (!window.confirm(`Reject ${member.name}?`)) {
+      return;
+    }
+
+    try {
+      await rejectStaff(member._id);
+      await loadStaff();
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to reject staff member.",
+      );
+    }
+  };
+
+  const handleCopyJoinCode = async () => {
+    if (!joinCode) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setCopiedJoinCode(true);
+      window.setTimeout(() => setCopiedJoinCode(false), 1800);
+    } catch {
+      setErrorMessage("Unable to copy join code.");
+    }
+  };
+
   return (
     <div className="ops-page">
       <main
@@ -240,10 +311,21 @@ export default function StaffRoles() {
         <header className="ops-topbar">
           <h1 className="ops-page-title">Staff & Roles</h1>
           <div className="ops-topbar-right">
-            <button type="button" className="ops-icon-btn" aria-label="Notifications">
+            <button
+              type="button"
+              className="ops-icon-btn"
+              aria-label="Notifications"
+            >
               <Bell size={18} />
             </button>
-            <UserProfileMenu />
+            <button
+              type="button"
+              className="ops-avatar"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              {userInitials}
+            </button>
           </div>
         </header>
 
@@ -252,10 +334,30 @@ export default function StaffRoles() {
             <h2>Right access, right people.</h2>
             <p>Lock down permissions without slowing anyone.</p>
           </div>
-          <button type="button" className="ops-primary-btn" onClick={openCreateModal}>
-            <CirclePlus size={16} />
-            Add Staff
-          </button>
+          <div className="ops-hero-actions">
+            {joinCode ? (
+              <div className="ops-join-code">
+                <span>Join code</span>
+                <strong>{joinCode}</strong>
+                <button
+                  type="button"
+                  className="ops-copy-btn"
+                  onClick={handleCopyJoinCode}
+                  aria-label="Copy company join code"
+                >
+                  {copiedJoinCode ? <Check size={15} /> : <Copy size={15} />}
+                </button>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className="ops-primary-btn"
+              onClick={openCreateModal}
+            >
+              <CirclePlus size={16} />
+              Add Staff
+            </button>
+          </div>
         </section>
 
         <section className="ops-stats-grid">
@@ -323,9 +425,14 @@ export default function StaffRoles() {
                   </tr>
                 ) : filteredStaff.length ? (
                   filteredStaff.map((member) => {
-                    const enabledPermissions = Object.entries(member.permissions || {})
+                    const enabledPermissions = Object.entries(
+                      member.permissions || {},
+                    )
                       .filter(([, enabled]) => enabled)
-                      .map(([permission]) => permissionLabels[permission] || permission);
+                      .map(
+                        ([permission]) =>
+                          permissionLabels[permission] || permission,
+                      );
 
                     return (
                       <tr key={member._id}>
@@ -338,15 +445,20 @@ export default function StaffRoles() {
                           </span>
                         </td>
                         <td>
-                          {member.source === "admin-assigned"
-                            ? "Admin assigned"
-                            : "Manual"}
+                          {member.membershipStatus === "pending"
+                            ? "Join request"
+                            : member.source === "invite"
+                              ? "Manual invite"
+                              : "Company user"}
                         </td>
                         <td>
                           <div className="ops-permission-list">
                             {enabledPermissions.length
                               ? enabledPermissions.map((permission) => (
-                                  <span className="ops-permission-chip" key={permission}>
+                                  <span
+                                    className="ops-permission-chip"
+                                    key={permission}
+                                  >
                                     {permission}
                                   </span>
                                 ))
@@ -355,24 +467,45 @@ export default function StaffRoles() {
                         </td>
                         <td>
                           <div className="ops-row-actions">
-                            <button
-                              type="button"
-                              className="ops-row-btn edit"
-                              disabled={member.source === "admin-assigned"}
-                              onClick={() => openEditModal(member)}
-                            >
-                              <Pencil size={14} />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="ops-row-btn delete"
-                              disabled={member.source === "admin-assigned"}
-                              onClick={() => handleDelete(member)}
-                            >
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
+                            {member.membershipStatus === "pending" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn edit"
+                                  onClick={() => handleApprove(member)}
+                                >
+                                  <UserCheck size={14} />
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn delete"
+                                  onClick={() => handleReject(member)}
+                                >
+                                  <X size={14} />
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn edit"
+                                  onClick={() => openEditModal(member)}
+                                >
+                                  <Pencil size={14} />
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ops-row-btn delete"
+                                  onClick={() => handleDelete(member)}
+                                >
+                                  <Trash2 size={14} />
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -392,13 +525,24 @@ export default function StaffRoles() {
 
         {isModalOpen ? (
           <div className="ops-modal-backdrop" onClick={closeModal}>
-            <div className="ops-modal" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="ops-modal"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="ops-modal-head">
                 <div>
-                  <h2>{editingStaff ? "Edit Staff Access" : "Add Staff Member"}</h2>
-                  <p>Set role, status, and the exact areas this person can reach.</p>
+                  <h2>
+                    {editingStaff ? "Edit Staff Access" : "Add Staff Member"}
+                  </h2>
+                  <p>
+                    Set role, status, and the exact areas this person can reach.
+                  </p>
                 </div>
-                <button type="button" className="ops-modal-close" onClick={closeModal}>
+                <button
+                  type="button"
+                  className="ops-modal-close"
+                  onClick={closeModal}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -409,7 +553,9 @@ export default function StaffRoles() {
                   <input
                     type="text"
                     value={form.name}
-                    onChange={(event) => updateField("name", event.target.value)}
+                    onChange={(event) =>
+                      updateField("name", event.target.value)
+                    }
                   />
                 </label>
                 <label>
@@ -417,14 +563,18 @@ export default function StaffRoles() {
                   <input
                     type="email"
                     value={form.email}
-                    onChange={(event) => updateField("email", event.target.value)}
+                    onChange={(event) =>
+                      updateField("email", event.target.value)
+                    }
                   />
                 </label>
                 <label>
                   <span>Role</span>
                   <select
                     value={form.role}
-                    onChange={(event) => updateField("role", event.target.value)}
+                    onChange={(event) =>
+                      updateField("role", event.target.value)
+                    }
                   >
                     <option value="Admin">Admin</option>
                     <option value="Manager">Manager</option>
@@ -437,7 +587,9 @@ export default function StaffRoles() {
                   <span>Status</span>
                   <select
                     value={form.status}
-                    onChange={(event) => updateField("status", event.target.value)}
+                    onChange={(event) =>
+                      updateField("status", event.target.value)
+                    }
                   >
                     <option value="active">Active</option>
                     <option value="invited">Invited</option>
@@ -446,26 +598,38 @@ export default function StaffRoles() {
                 </label>
                 <div className="ops-form-full">
                   <div className="ops-check-grid">
-                    {Object.entries(permissionLabels).map(([permission, label]) => (
-                      <label className="ops-check" key={permission}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(form.permissions[permission])}
-                          onChange={(event) =>
-                            updatePermission(permission, event.target.checked)
-                          }
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
+                    {Object.entries(permissionLabels).map(
+                      ([permission, label]) => (
+                        <label className="ops-check" key={permission}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(form.permissions[permission])}
+                            onChange={(event) =>
+                              updatePermission(permission, event.target.checked)
+                            }
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ),
+                    )}
                   </div>
                 </div>
-                {submitError ? <p className="ops-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="ops-form-error">{submitError}</p>
+                ) : null}
                 <div className="ops-form-actions">
-                  <button type="button" className="ops-secondary-btn" onClick={closeModal}>
+                  <button
+                    type="button"
+                    className="ops-secondary-btn"
+                    onClick={closeModal}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="ops-primary-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="ops-primary-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Saving..." : "Save Access"}
                   </button>
                 </div>

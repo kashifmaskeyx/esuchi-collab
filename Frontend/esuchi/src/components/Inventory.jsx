@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,9 +12,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
 import Pagination from "./Pagination";
-import UserProfileMenu from "./UserProfileMenu";
 import "../css/Inventory.css";
 
 const emptyMovementForm = {
@@ -29,7 +29,9 @@ const MOVEMENT_PAGE_SIZE = 6;
 
 const readLoginNotification = () => {
   try {
-    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    const storedNotification = sessionStorage.getItem(
+      "esuchiLoginNotification",
+    );
     return storedNotification ? JSON.parse(storedNotification) : null;
   } catch {
     return null;
@@ -59,7 +61,9 @@ const getProductCode = (product, inventory) => {
     return inventory.inventoryId;
   }
 
-  return `PRD-${String(product?._id || "unknown").slice(-6).toUpperCase()}`;
+  return `PRD-${String(product?._id || "unknown")
+    .slice(-6)
+    .toUpperCase()}`;
 };
 
 const getMovementBadgeClass = (movementType) => {
@@ -68,6 +72,14 @@ const getMovementBadgeClass = (movementType) => {
   }
 
   if (movementType === "OUT") {
+    return "inventory-movement-badge out";
+  }
+
+  if (movementType === "RETURN") {
+    return "inventory-movement-badge in";
+  }
+
+  if (movementType === "DAMAGED") {
     return "inventory-movement-badge out";
   }
 
@@ -109,6 +121,8 @@ const getMovementLabel = (movementType) => {
 
 export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -329,7 +343,10 @@ export default function Inventory() {
   const paginatedMovementRows = useMemo(() => {
     const startIndex = (movementPage - 1) * MOVEMENT_PAGE_SIZE;
 
-    return filteredMovementRows.slice(startIndex, startIndex + MOVEMENT_PAGE_SIZE);
+    return filteredMovementRows.slice(
+      startIndex,
+      startIndex + MOVEMENT_PAGE_SIZE,
+    );
   }, [filteredMovementRows, movementPage]);
 
   const stats = useMemo(
@@ -458,7 +475,9 @@ export default function Inventory() {
       selectedInventoryRow &&
       quantity > selectedInventoryRow.currentStock
     ) {
-      setSubmitError("Stock out quantity cannot be greater than current stock.");
+      setSubmitError(
+        "Stock out quantity cannot be greater than current stock.",
+      );
       return;
     }
 
@@ -544,15 +563,20 @@ export default function Inventory() {
                       ))}
                     </div>
                   ) : (
-                    <p className="notification-empty">
-                      No new notifications.
-                    </p>
+                    <p className="notification-empty">No new notifications.</p>
                   )}
                 </div>
               ) : null}
             </div>
 
-            <UserProfileMenu />
+            <button
+              type="button"
+              className="inventory-avatar"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <span>{userInitials}</span>
+            </button>
           </div>
         </header>
 
@@ -750,7 +774,9 @@ export default function Inventory() {
                       <td>{row.movementId}</td>
                       <td>{row.productName}</td>
                       <td>
-                        <span className={getMovementBadgeClass(row.movementType)}>
+                        <span
+                          className={getMovementBadgeClass(row.movementType)}
+                        >
                           {row.movementType === "IN" ? (
                             <ArrowUpCircle size={14} />
                           ) : (
@@ -767,7 +793,8 @@ export default function Inventory() {
                 ) : (
                   <tr>
                     <td colSpan="6" className="inventory-table-state">
-                      No stock movement records match the current search or filter.
+                      No stock movement records match the current search or
+                      filter.
                     </td>
                   </tr>
                 )}
@@ -787,7 +814,10 @@ export default function Inventory() {
         </section>
 
         {isModalOpen ? (
-          <div className="inventory-modal-backdrop" onClick={closeMovementModal}>
+          <div
+            className="inventory-modal-backdrop"
+            onClick={closeMovementModal}
+          >
             <div
               className="inventory-modal"
               onClick={(event) => event.stopPropagation()}
@@ -796,8 +826,8 @@ export default function Inventory() {
                 <div>
                   <h2>Record Stock Movement</h2>
                   <p>
-                    Save stock in and stock out transactions with date, quantity,
-                    and automatic stock updates.
+                    Save stock in and stock out transactions with date,
+                    quantity, and automatic stock updates.
                   </p>
                 </div>
                 <button
@@ -862,8 +892,12 @@ export default function Inventory() {
                 {selectedInventoryRow ? (
                   <div className="inventory-projection-card">
                     <strong>{selectedInventoryRow.productName}</strong>
-                    <span>Current stock: {selectedInventoryRow.currentStock}</span>
-                    <span>Minimum stock: {selectedInventoryRow.minimumStock}</span>
+                    <span>
+                      Current stock: {selectedInventoryRow.currentStock}
+                    </span>
+                    <span>
+                      Minimum stock: {selectedInventoryRow.minimumStock}
+                    </span>
                     <span>
                       Projected stock after save:{" "}
                       {projectedStock ?? selectedInventoryRow.currentStock}
@@ -871,7 +905,9 @@ export default function Inventory() {
                   </div>
                 ) : null}
 
-                {submitError ? <p className="inventory-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="inventory-form-error">{submitError}</p>
+                ) : null}
 
                 <div className="inventory-form-actions">
                   <button
