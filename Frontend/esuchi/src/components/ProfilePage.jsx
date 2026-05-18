@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   changeCurrentPassword,
+  getCurrentUser,
   getStoredUser,
   requestEmailChangeOtp,
   updateCurrentUser,
@@ -33,11 +34,16 @@ const storedProfile = () => {
       return currentUser;
     }
 
-    return JSON.parse(localStorage.getItem("esuchiProfile")) || {};
+    return JSON.parse(localStorage.getItem("esuchiProfile")) || null;
   } catch {
-    return {};
+    return null;
   }
 };
+
+const toProfile = (user = {}) => ({
+  name: user?.name || "",
+  email: user?.email || "",
+});
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -49,14 +55,8 @@ export default function ProfilePage() {
   const [loginNotification, setLoginNotification] = useState(() =>
     readLoginNotification(),
   );
-  const [savedProfile, setSavedProfile] = useState({
-    name: profile.name || "Admin User",
-    email: profile.email || "admin@esuchi.com",
-  });
-  const [accountForm, setAccountForm] = useState({
-    name: profile.name || "Admin User",
-    email: profile.email || "admin@esuchi.com",
-  });
+  const [savedProfile, setSavedProfile] = useState(() => toProfile(profile));
+  const [accountForm, setAccountForm] = useState(() => toProfile(profile));
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -79,7 +79,9 @@ export default function ProfilePage() {
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "A";
+    .toUpperCase() ||
+    savedProfile.email.slice(0, 2).toUpperCase() ||
+    "U";
   const emailChanged =
     accountForm.email.trim().toLowerCase() !==
     savedProfile.email.trim().toLowerCase();
@@ -95,6 +97,28 @@ export default function ProfilePage() {
     sessionStorage.removeItem("esuchiLoginNotification");
     setLoginNotification(null);
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getCurrentUser()
+      .then((response) => {
+        if (!isMounted || !response.user) {
+          return;
+        }
+
+        const currentProfile = toProfile(response.user);
+        setSavedProfile(currentProfile);
+        setAccountForm(currentProfile);
+      })
+      .catch(() => {
+        // Keep any cached profile visible if the refresh fails.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!showNotifications) {
@@ -253,7 +277,7 @@ export default function ProfilePage() {
         <header className="profile-topbar">
           <div className="profile-topbar-left">
             <h1 className="profile-page-title">Account Settings</h1>
-            <p>Manage your admin profile and security details.</p>
+            <p>Manage your profile and security details.</p>
           </div>
 
           <div className="profile-topbar-right">
@@ -310,7 +334,7 @@ export default function ProfilePage() {
               <input type="text" placeholder="Search settings" />
             </div>
 
-            <div className="profile-avatar" aria-label="Current admin">
+            <div className="profile-avatar" aria-label="Current user">
               <span>{initials}</span>
             </div>
           </div>
@@ -334,7 +358,7 @@ export default function ProfilePage() {
               <div className="profile-panel-head">
                 <div>
                   <h2>My Profile</h2>
-                  <p>Edit the name and email shown on your admin account.</p>
+                  <p>Edit the name and email shown on your account.</p>
                 </div>
                 <div className="profile-identity">
                   <div className="profile-photo">

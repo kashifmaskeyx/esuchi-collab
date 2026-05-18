@@ -2,6 +2,7 @@ const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const dns = require("dns").promises;
 const { validationResult } = require("express-validator");
 const { sendOtpEmail } = require("../config/mail");
 
@@ -13,6 +14,53 @@ const signToken = (id) =>
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "esuchiinfo@gmail.com").toLowerCase();
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const hasDeliverableEmailDomain = async (email) => {
+  const domain = email.split("@")[1];
+
+  if (!domain) {
+    return false;
+  }
+
+  try {
+    const records = await dns.resolveMx(domain);
+    if (records.length) {
+      return true;
+    }
+  } catch {
+    // Some valid domains do not publish MX records, so try address records too.
+  }
+
+  try {
+    const records = await dns.resolve4(domain);
+    if (records.length) {
+      return true;
+    }
+  } catch {
+    // Try IPv6 before declaring the domain non-deliverable.
+  }
+
+  try {
+    const records = await dns.resolve6(domain);
+    return records.length > 0;
+  } catch {
+    return false;
+  }
+};
+
+const isNonExistentMailboxError = (error) => {
+  const responseCode = Number(error?.responseCode);
+  const message = `${error?.message || ""} ${error?.response || ""}`.toLowerCase();
+
+  return (
+    [550, 551, 553].includes(responseCode) ||
+    message.includes("user unknown") ||
+    message.includes("mailbox unavailable") ||
+    message.includes("recipient address rejected") ||
+    message.includes("no such user")
+  );
+};
 
 //
 // ================= SIGNUP OTP =================
@@ -259,10 +307,24 @@ exports.requestEmailChangeOtp = async (req, res) => {
         .json({ success: false, message: "Email is required" });
     }
 
+    if (!EMAIL_PATTERN.test(email)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Enter a valid email address" });
+    }
+
     if (email === req.user.email) {
       return res
         .status(400)
         .json({ success: false, message: "Enter a different email address" });
+    }
+
+    const hasDeliverableDomain = await hasDeliverableEmailDomain(email);
+
+    if (!hasDeliverableDomain) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email address does not exist" });
     }
 
     const existingUser = await User.findOne({
@@ -283,12 +345,24 @@ exports.requestEmailChangeOtp = async (req, res) => {
     }
 
     const otp = String(crypto.randomInt(100000, 1000000));
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    try {
+      await sendOtpEmail(email, otp, "email verification");
+    } catch (error) {
+      if (isNonExistentMailboxError(error)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email address does not exist" });
+      }
+
+      throw error;
+    }
+
     user.pendingEmail = email;
-    user.emailChangeOtpHash = await bcrypt.hash(otp, 10);
+    user.emailChangeOtpHash = otpHash;
     user.emailChangeOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     await user.save();
-
-    await sendOtpEmail(email, otp, "email verification");
 
     res.json({
       success: true,
