@@ -1,22 +1,72 @@
 const User = require("../models/userModel");
+const Company = require("../models/companyModel");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const dns = require("dns").promises;
 const { validationResult } = require("express-validator");
 const { sendOtpEmail } = require("../config/mail");
+const {
+  createCompanyForUser,
+  ensureUserCompany,
+  migrateLegacyDataForUser,
+} = require("../utils/companyProvisioning");
+const { getCompanyId } = require("../utils/tenant");
 
 // ================= TOKEN =================
-const signToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, {
+const signToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 
+const sendTokenCookie = (res, token) => {
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
+
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "esuchiinfo@gmail.com").toLowerCase();
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const getEffectiveRole = (user) =>
-  user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : user.role;
+const COMPANY_ROLES = ["admin", "manager", "staff", "viewer"];
+
+const normalizeJoinCode = (joinCode) =>
+  joinCode ? String(joinCode).trim().toUpperCase() : "";
+
+const serializeCompany = (company, role) => {
+  if (!company) return null;
+
+  const companyId = company._id || company;
+  const payload = {
+    _id: companyId,
+    id: companyId,
+    name: company.name,
+    slug: company.slug,
+  };
+
+  if (role === "admin") {
+    payload.joinCode = company.joinCode;
+  }
+
+  return payload;
+};
+
+const serializeUser = (user) => ({
+  _id: user._id,
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  membershipStatus: user.membershipStatus,
+  company: serializeCompany(user.company, user.role),
+});
+
+const reloadAuthUser = (id) =>
+  User.findById(id)
+    .select("-password")
+    .populate("company", "name slug joinCode owner isActive");
 
 const hasDeliverableEmailDomain = async (email) => {
   const domain = email.split("@")[1];
@@ -103,7 +153,7 @@ exports.requestSignupOtp = async (req, res) => {
 
     res.json({ message: "OTP sent to email" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to send signup OTP" });
   }
 };
 
@@ -112,10 +162,16 @@ exports.requestSignupOtp = async (req, res) => {
 //
 exports.verifySignupOtp = async (req, res) => {
   try {
-    const { email, otp, name, password } = req.body;
+    const { email, otp, name, password, companyName, joinCode } = req.body;
 
     if (!email || !otp || !name || !password) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (companyName && joinCode) {
+      return res.status(400).json({
+        message: "Choose either create company or join company, not both",
+      });
     }
 
     const user = await User.findOne({ email: email.trim() });
@@ -133,31 +189,59 @@ exports.verifySignupOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
+    const normalizedJoinCode = normalizeJoinCode(joinCode);
+    let company = null;
+    let role = "admin";
+    let membershipStatus = "approved";
+
+    if (normalizedJoinCode) {
+      company = await Company.findOne({
+        joinCode: normalizedJoinCode,
+        isActive: true,
+      });
+
+      if (!company) {
+        return res.status(404).json({ message: "Company join code is invalid" });
+      }
+
+      role = "staff";
+      membershipStatus = "pending";
+    }
+
     // finalize user
     user.name = name;
     user.password = password; // pre-save hook will hash it
-    user.role = user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user";
     user.signupOtpHash = null;
     user.signupOtpExpires = null;
     user.isActive = true;
     user.isVerified = true;
+    user.role = role;
+    user.membershipStatus = membershipStatus;
+
+    if (!company) {
+      company = await createCompanyForUser(user, companyName || `${name}'s Company`);
+    }
+
+    user.company = company._id;
 
     await user.save();
 
-    const token = signToken(user._id, getEffectiveRole(user));
+    if (membershipStatus === "approved") {
+      await migrateLegacyDataForUser(user._id, company._id);
+    }
+
+    const token = signToken(user._id);
+    sendTokenCookie(res, token);
+
+    const authUser = await reloadAuthUser(user._id);
 
     res.json({
       success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: getEffectiveRole(user),
-      },
+      requiresApproval: membershipStatus !== "approved",
+      user: serializeUser(authUser),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Unable to verify signup OTP" });
   }
 };
 
@@ -172,7 +256,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select("+password");
+    let user = await User.findOne({ email }).select("+password");
 
     if (!user || !(await user.matchPassword(password))) {
       return res
@@ -193,20 +277,27 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = signToken(user._id, getEffectiveRole(user));
+    await ensureUserCompany(user);
+    user = await User.findById(user._id)
+      .select("+password")
+      .populate("company", "name slug joinCode owner isActive");
+
+    if (user.company && user.company.isActive === false) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Company account is deactivated" });
+    }
+
+    const token = signToken(user._id);
+    sendTokenCookie(res, token);
 
     res.json({
       success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: getEffectiveRole(user),
-      },
+      requiresApproval: user.membershipStatus !== "approved",
+      user: serializeUser(user),
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to log in" });
   }
 };
 
@@ -214,13 +305,17 @@ exports.login = async (req, res) => {
 // ================= GET ME =================
 //
 exports.getMe = async (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({
+    success: true,
+    requiresApproval: req.user.membershipStatus !== "approved",
+    user: serializeUser(req.user),
+  });
 };
 
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find()
-      .select("name email role isActive isVerified createdAt updatedAt")
+    const users = await User.find({ company: getCompanyId(req) })
+      .select("name email role membershipStatus isActive isVerified createdAt updatedAt")
       .sort("-createdAt");
 
     res.json({
@@ -230,11 +325,14 @@ exports.getUsers = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        role:
-          user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL
-            ? "admin"
-            : user.role,
-        status: user.isActive ? "active" : "suspended",
+        role: user.role,
+        membershipStatus: user.membershipStatus,
+        status:
+          user.membershipStatus === "pending"
+            ? "pending"
+            : user.isActive
+              ? "active"
+              : "suspended",
         isActive: user.isActive,
         isVerified: user.isVerified,
         createdAt: user.createdAt,
@@ -249,26 +347,45 @@ exports.getUsers = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   try {
     const role = req.body.role?.trim().toLowerCase();
-    const allowedRoles = ["user", "staff", "admin"];
+    const allowedRoles = COMPANY_ROLES;
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: "Role must be user, staff, or admin",
+        message: "Role must be admin, manager, staff, or viewer",
       });
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne({
+      _id: req.params.id,
+      company: getCompanyId(req),
+    });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (user.email?.toLowerCase() === ADMIN_EMAIL && role !== "admin") {
+    if (String(user._id) === String(req.user._id) && role !== "admin") {
       return res.status(400).json({
         success: false,
-        message: "Primary admin must keep the admin role",
+        message: "You cannot remove your own admin role",
       });
+    }
+
+    if (user.role === "admin" && role !== "admin") {
+      const adminCount = await User.countDocuments({
+        company: getCompanyId(req),
+        role: "admin",
+        membershipStatus: "approved",
+        isActive: true,
+      });
+
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "A company must have at least one active admin",
+        });
+      }
     }
 
     user.role = role;
@@ -281,11 +398,14 @@ exports.updateUserRole = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        role:
-          user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL
-            ? "admin"
-            : user.role,
-        status: user.isActive ? "active" : "suspended",
+        role: user.role,
+        membershipStatus: user.membershipStatus,
+        status:
+          user.membershipStatus === "pending"
+            ? "pending"
+            : user.isActive
+              ? "active"
+              : "suspended",
         isActive: user.isActive,
         isVerified: user.isVerified,
         createdAt: user.createdAt,
@@ -372,7 +492,7 @@ exports.requestEmailChangeOtp = async (req, res) => {
       message: "OTP sent to your new email address.",
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to send email OTP" });
   }
 };
 
@@ -455,18 +575,15 @@ exports.updateMe = async (req, res) => {
     user.emailChangeOtpExpires = null;
     await user.save();
 
+    const authUser = await reloadAuthUser(user._id);
+
     res.json({
       success: true,
       message: "Profile updated successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: getEffectiveRole(user),
-      },
+      user: serializeUser(authUser),
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to update profile" });
   }
 };
 
@@ -513,7 +630,7 @@ exports.changePassword = async (req, res) => {
 
     res.json({ success: true, message: "Password changed successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: "Unable to change password" });
   }
 };
 
@@ -521,5 +638,10 @@ exports.changePassword = async (req, res) => {
 // ================= LOGOUT =================
 //
 exports.logout = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
   res.json({ success: true, message: "Logged out successfully" });
 };

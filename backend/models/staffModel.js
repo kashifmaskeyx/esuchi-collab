@@ -8,6 +8,12 @@ const staffSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -43,6 +49,6 @@ const staffSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-staffSchema.index({ owner: 1, email: 1 }, { unique: true });
+staffSchema.index({ company: 1, email: 1 }, { unique: true });
 
 module.exports = mongoose.model("Staff", staffSchema);

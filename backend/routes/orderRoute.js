@@ -9,15 +9,19 @@ const {
   deleteOrder,
 } = require("../controllers/orderController");
 
-const { protect, authorize } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  adminOnly,
+  requireApprovedCompany,
+} = require("../middlewares/authMiddleware");
 
-// user/staff/admin
-router.post("/", protect, authorize("user", "staff", "admin"), createOrder);
-router.get("/my-orders", protect, authorize("user", "staff", "admin"), getMyOrders);
-router.patch("/:id/status", protect, authorize("staff", "admin"), updateOrderStatus);
-router.delete("/:id", protect, authorize("staff", "admin"), deleteOrder);
+// user
+router.post("/", protect, requireApprovedCompany, createOrder);
+router.get("/my-orders", protect, requireApprovedCompany, getMyOrders);
+router.patch("/:id/status", protect, requireApprovedCompany, updateOrderStatus);
+router.delete("/:id", protect, requireApprovedCompany, deleteOrder);
 
 // admin
-router.get("/", protect, authorize("admin"), getOrders);
+router.get("/", protect, adminOnly, getOrders);
 
 module.exports = router;
