@@ -38,6 +38,7 @@ import {
   updateAdminUserRole,
 } from "../api/auth";
 import { getDashboardData } from "../api/dashboard";
+import { approveStaff, rejectStaff } from "../api/staff";
 import {
   createSalesOrder,
   deleteSalesOrder,
@@ -1274,6 +1275,50 @@ export default function AdminDashboard() {
     setLoginNotification(null);
   };
 
+  const handleApproveUser = async (member) => {
+    if (!member?._id) {
+      return;
+    }
+
+    setStaffError("");
+    setRoleUpdatingUserId(member._id);
+
+    try {
+      await approveStaff(member._id);
+      await loadAdminData();
+    } catch (error) {
+      setStaffError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to approve this user.",
+      );
+    } finally {
+      setRoleUpdatingUserId("");
+    }
+  };
+
+  const handleRejectUser = async (member) => {
+    if (!member?._id || !window.confirm(`Reject ${member.name || member.email}?`)) {
+      return;
+    }
+
+    setStaffError("");
+    setRoleUpdatingUserId(member._id);
+
+    try {
+      await rejectStaff(member._id);
+      await loadAdminData();
+    } catch (error) {
+      setStaffError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to reject this user.",
+      );
+    } finally {
+      setRoleUpdatingUserId("");
+    }
+  };
+
   const handleCopyJoinCode = async () => {
     if (!joinCode) {
       return;
@@ -1789,6 +1834,7 @@ export default function AdminDashboard() {
                             <th>Account</th>
                             <th>Email Status</th>
                             <th>Joined</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1836,11 +1882,36 @@ export default function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td>{formatDate(member.createdAt)}</td>
+                                <td>
+                                  {member.membershipStatus === "pending" ||
+                                  member.status === "pending" ? (
+                                    <div className="admin-user-actions">
+                                      <button
+                                        type="button"
+                                        className="admin-mini-action approve"
+                                        disabled={roleUpdatingUserId === member._id}
+                                        onClick={() => handleApproveUser(member)}
+                                      >
+                                        Approve
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="admin-mini-action reject"
+                                        disabled={roleUpdatingUserId === member._id}
+                                        onClick={() => handleRejectUser(member)}
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="card-inline-note">Approved</span>
+                                  )}
+                                </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td className="admin-table-empty" colSpan="6">
+                              <td className="admin-table-empty" colSpan="7">
                                 {staffError || "No users found."}
                               </td>
                             </tr>

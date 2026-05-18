@@ -680,6 +680,38 @@
   white-space: nowrap;
 }
 
+.admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-mini-action {
+  min-height: 32px;
+  border: none;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-mini-action.approve {
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.admin-mini-action.reject {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.admin-mini-action:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .admin-hero-panel h2,
 .admin-hero-panel p,
 .admin-section-copy {
