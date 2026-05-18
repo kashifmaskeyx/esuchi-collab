@@ -4,11 +4,11 @@ const { randomUUID } = require("crypto");
 const shipmentSchema = new mongoose.Schema(
   {
     shipmentId: { type: String, unique: true },
-   supplier: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Supplier",
-  required: true,
-},
+    supplier: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Supplier",
+      required: true,
+    },
     products: [
       {
         product: {
@@ -32,6 +32,12 @@ const shipmentSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
+    },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
       required: true,
       index: true,
     },

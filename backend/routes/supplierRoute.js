@@ -9,9 +9,12 @@ const {
   deleteSupplier,
 } = require("../controllers/supplierController");
 
-const { protect } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  requireApprovedCompany,
+} = require("../middlewares/authMiddleware");
 
-router.use(protect);
+router.use(protect, requireApprovedCompany);
 
 router.post("/", createSupplier);
 router.put("/:id", updateSupplier);

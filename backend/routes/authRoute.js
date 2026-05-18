@@ -22,7 +22,12 @@ const {
   adminResetUserPassword,
 } = require("../controllers/passwordResetController");
 
-const { protect, adminOnly } = require("../middlewares/authMiddleware");
+const { protect, authorize } = require("../middlewares/authMiddleware");
+const {
+  authRateLimit,
+  otpRequestRateLimit,
+  otpVerifyRateLimit,
+} = require("../middlewares/rateLimitMiddleware");
 
 //
 // ================= SIGNUP (OTP FLOW) =================
@@ -32,6 +37,7 @@ const { protect, adminOnly } = require("../middlewares/authMiddleware");
 router.post(
   "/signup-otp",
   [body("email").isEmail().withMessage("Valid email required")],
+  otpRequestRateLimit,
   requestSignupOtp,
 );
 
@@ -44,6 +50,7 @@ router.post(
     body("name").notEmpty(),
     body("password").isLength({ min: 6 }),
   ],
+  otpVerifyRateLimit,
   verifySignupOtp,
 );
 
@@ -53,19 +60,21 @@ router.post(
 router.post(
   "/login",
   [body("email").isEmail(), body("password").notEmpty()],
+  authRateLimit,
   login,
 );
 
 //
 // ================= AUTH USER =================
 //
-router.get("/users", protect, adminOnly, getUsers);
-router.patch("/users/:id/role", protect, adminOnly, updateUserRole);
+router.get("/users", protect, authorize("admin"), getUsers);
+router.patch("/users/:id/role", protect, authorize("admin"), updateUserRole);
 router.get("/me", protect, getMe);
 router.post(
   "/me/email-otp",
   protect,
   [body("email").isEmail()],
+  otpRequestRateLimit,
   requestEmailChangeOtp,
 );
 router.put(
@@ -89,11 +98,12 @@ router.post("/logout", protect, logout);
 //
 // ================= FORGOT PASSWORD =================
 //
-router.post("/forgot-password", requestPasswordResetOtp);
+router.post("/forgot-password", otpRequestRateLimit, requestPasswordResetOtp);
 
 router.post(
   "/verify-reset-otp",
   [body("email").isEmail(), body("otp").notEmpty()],
+  otpVerifyRateLimit,
   verifyPasswordResetOtp,
 );
 
@@ -101,9 +111,11 @@ router.post(
   "/reset-password",
   [
     body("email").isEmail(),
+    body("resetToken").notEmpty(),
     body("password").isLength({ min: 6 }),
     body("confirmPassword").notEmpty(),
   ],
+  authRateLimit,
   resetPasswordAfterOtpVerified,
 );
 
@@ -113,7 +125,7 @@ router.post(
 router.post(
   "/admin/reset-user-password",
   protect,
-  adminOnly,
+  authorize("admin"),
   adminResetUserPassword,
 );
 

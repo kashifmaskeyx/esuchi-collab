@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   Bell,
   CirclePlus,
@@ -13,7 +13,6 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import {
   createShipment,
   deleteShipment,
@@ -22,6 +21,7 @@ import {
   getSuppliers,
   updateShipmentStatus,
 } from "../api/shipments";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Shipping.css";
 
 const readLoginNotification = () => {
@@ -64,8 +64,6 @@ const formatStatusLabel = (status) => {
 
 export default function Shipping() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -417,14 +415,7 @@ export default function Shipping() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="shipping-profile"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <div className="shipping-profile-avatar">{userInitials}</div>
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 

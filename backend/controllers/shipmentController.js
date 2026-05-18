@@ -3,6 +3,7 @@ const Shipment = require("../models/shipmentModel");
 const Product = require("../models/productModel");
 const Supplier = require("../models/supplierModel");
 const createAuditLog = require("../utils/auditLogger");
+const { companyQuery, createdByFields } = require("../utils/tenant");
 
 // GET all shipments
 exports.getShipments = async (req, res) => {
@@ -12,8 +13,10 @@ exports.getShipments = async (req, res) => {
     const limit = 10;
     const skip = (parseInt(page) - 1) * limit;
 
-    // filter
-    const query = status ? { status } : {};
+    const query = {
+      company: companyQuery(req).company,
+      ...(status ? { status } : {}),
+    };
 
     // total count (for pagination info)
     const totalShipments = await Shipment.countDocuments(query);
@@ -34,7 +37,9 @@ exports.getShipments = async (req, res) => {
       data: shipments,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to load shipments" });
   }
 };
 
@@ -43,7 +48,7 @@ exports.getShipmentById = async (req, res) => {
   try {
     const shipment = await Shipment.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      company: companyQuery(req).company,
     })
       .populate("products.product", "name code unit")
       .populate("createdBy", "name");
@@ -55,7 +60,9 @@ exports.getShipmentById = async (req, res) => {
 
     res.json({ success: true, data: shipment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to load shipment" });
   }
 };
 
@@ -64,12 +71,9 @@ exports.createShipment = async (req, res) => {
   try {
     const { supplier, products } = req.body;
 
-    const supplierQuery =
-      req.user.role === "admin"
-        ? { _id: supplier }
-        : { _id: supplier, user: req.user._id };
-
-    const supplierRecord = await Supplier.findOne(supplierQuery);
+    const supplierRecord = await Supplier.findOne(
+      companyQuery(req, { _id: supplier }),
+    );
 
     if (!supplierRecord) {
       return res
@@ -92,10 +96,7 @@ exports.createShipment = async (req, res) => {
     }
 
     const uniqueProductIds = [...new Set(productIds.map(String))];
-    const productQuery =
-      req.user.role === "admin"
-        ? { _id: { $in: uniqueProductIds } }
-        : { _id: { $in: uniqueProductIds }, user: req.user._id };
+    const productQuery = companyQuery(req, { _id: { $in: uniqueProductIds } });
 
     const userProductsCount = await Product.countDocuments(productQuery);
 
@@ -107,7 +108,7 @@ exports.createShipment = async (req, res) => {
 
     const shipment = await Shipment.create({
       ...req.body,
-      createdBy: req.user._id,
+      ...createdByFields(req),
     });
 
     await createAuditLog({
@@ -121,7 +122,9 @@ exports.createShipment = async (req, res) => {
 
     res.status(201).json({ success: true, data: shipment });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res
+      .status(400)
+      .json({ success: false, message: "Unable to create shipment" });
   }
 };
 
@@ -139,7 +142,7 @@ exports.updateShipmentStatus = async (req, res) => {
 
     const oldShipment = await Shipment.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      company: companyQuery(req).company,
     });
 
     if (!oldShipment)
@@ -148,7 +151,7 @@ exports.updateShipmentStatus = async (req, res) => {
         .json({ success: false, message: "Shipment not found" });
 
     const shipment = await Shipment.findOneAndUpdate(
-      query,
+      companyQuery(req, { _id: req.params.id }),
       { status },
       { new: true },
     );
@@ -165,17 +168,16 @@ exports.updateShipmentStatus = async (req, res) => {
 
     res.json({ success: true, data: shipment });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to update shipment" });
   }
 };
 
 // DELETE shipment
 exports.deleteShipment = async (req, res) => {
   try {
-    const query =
-      req.user.role === "admin"
-        ? { _id: req.params.id }
-        : { _id: req.params.id, createdBy: req.user._id };
+    const query = companyQuery(req, { _id: req.params.id });
 
     const shipment = await Shipment.findOneAndDelete(query);
 
@@ -195,6 +197,8 @@ exports.deleteShipment = async (req, res) => {
 
     res.json({ success: true, message: "Shipment deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to delete shipment" });
   }
 };

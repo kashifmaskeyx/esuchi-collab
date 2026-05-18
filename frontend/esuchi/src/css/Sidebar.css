@@ -39,6 +39,23 @@
   transition: padding 0.28s ease, gap 0.28s ease, margin-bottom 0.28s ease;
 }
 
+.sidebar-logo-link {
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-logo-link:hover {
+  background: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+}
+
 .sidebar-logo {
   width: 96px;
   transition: width 0.28s ease, opacity 0.2s ease, transform 0.28s ease;
@@ -170,41 +187,6 @@
   transform: translateX(2px);
 }
 
-.sidebar-logout-btn {
-  margin-top: auto;
-  border: none;
-  background: transparent;
-  color: #344054;
-  padding: 11px 12px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    padding 0.28s ease,
-    transform 0.2s ease;
-}
-
-.sidebar-logout-btn:hover {
-  background: rgba(31, 90, 147, 0.08);
-  color: var(--app-blue-strong);
-}
-
-.sidebar-panel.closed .sidebar-logout-btn {
-  justify-content: center;
-  padding: 10px;
-}
-
-.sidebar-panel.closed .sidebar-logout-btn span {
-  display: none;
-}
-
 @media (min-width: 981px) {
   .sidebar-close-btn {
     display: none;
@@ -261,14 +243,8 @@
     padding: 8px 12px;
   }
 
-  .sidebar-panel.closed .sidebar-link span,
-  .sidebar-panel.closed .sidebar-logout-btn span {
+  .sidebar-panel.closed .sidebar-link span {
     display: inline;
-  }
-
-  .sidebar-panel.closed .sidebar-logout-btn {
-    justify-content: flex-start;
-    padding: 8px 12px;
   }
 
   .sidebar-mini-btn {

@@ -18,7 +18,24 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    role: { type: String, enum: ["admin", "staff", "user"], default: "user" },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      index: true,
+      default: null,
+    },
+
+    role: {
+      type: String,
+      enum: ["admin", "manager", "staff", "viewer", "user"],
+      default: "staff",
+    },
+    membershipStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+      index: true,
+    },
     isActive: { type: Boolean, default: true },
 
     passwordResetOtpHash: {
@@ -30,6 +47,14 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     passwordResetAllowedUntil: {
+      type: Date,
+      default: null,
+    },
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+    },
+    passwordResetTokenExpires: {
       type: Date,
       default: null,
     },

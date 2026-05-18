@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,9 +12,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
 import Pagination from "./Pagination";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Inventory.css";
 
 const emptyMovementForm = {
@@ -74,10 +74,41 @@ const getMovementBadgeClass = (movementType) => {
   return "inventory-movement-badge";
 };
 
+const normalizeMovementType = (movementType) => {
+  const normalizedType = String(movementType || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (["OUT", "STOCK_OUT"].includes(normalizedType)) {
+    return "OUT";
+  }
+
+  if (["IN", "STOCK_IN"].includes(normalizedType)) {
+    return "IN";
+  }
+
+  return normalizedType;
+};
+
+const getMovementLabel = (movementType) => {
+  if (movementType === "IN") {
+    return "Stock In";
+  }
+
+  if (movementType === "OUT") {
+    return "Stock Out";
+  }
+
+  if (movementType === "ADJUSTMENT") {
+    return "Adjustment";
+  }
+
+  return "Unknown";
+};
+
 export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -224,7 +255,7 @@ export default function Inventory() {
         id: movement._id,
         movementId: movement.movementId || movement._id,
         productName: movement.product?.name || "Unknown product",
-        movementType: movement.movementType || "-",
+        movementType: normalizeMovementType(movement.movementType),
         quantity: Number(movement.quantity) || 0,
         movementDate: movement.movementDate || movement.createdAt,
         createdBy: movement.user?.name || "Unknown user",
@@ -521,14 +552,7 @@ export default function Inventory() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="inventory-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 
@@ -691,6 +715,7 @@ export default function Inventory() {
               <option value="all">All movement types</option>
               <option value="IN">Stock In</option>
               <option value="OUT">Stock Out</option>
+              <option value="ADJUSTMENT">Adjustment</option>
             </select>
           </div>
 
@@ -731,7 +756,7 @@ export default function Inventory() {
                           ) : (
                             <ArrowDownCircle size={14} />
                           )}
-                          {row.movementType === "IN" ? "Stock In" : "Stock Out"}
+                          {getMovementLabel(row.movementType)}
                         </span>
                       </td>
                       <td>{row.quantity}</td>

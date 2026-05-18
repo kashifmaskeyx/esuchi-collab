@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   Bell,
   CirclePlus,
@@ -11,8 +11,8 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import { createStaff, deleteStaff, getStaff, updateStaff } from "../api/staff";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Operations.css";
 
 const emptyPermissions = {
@@ -39,8 +39,6 @@ const permissionLabels = {
 
 export default function StaffRoles() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [staff, setStaff] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -245,14 +243,7 @@ export default function StaffRoles() {
             <button type="button" className="ops-icon-btn" aria-label="Notifications">
               <Bell size={18} />
             </button>
-            <button
-              type="button"
-              className="ops-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              {userInitials}
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 
