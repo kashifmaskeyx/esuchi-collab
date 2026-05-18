@@ -1,4 +1,5 @@
 const AuditLog = require("../models/auditlogModel");
+const { companyQuery } = require("../utils/tenant");
 
 exports.getAuditLogs = async (req, res) => {
   try {
@@ -6,7 +7,7 @@ exports.getAuditLogs = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 20;
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const query = companyQuery(req);
     if (req.query.userId) query.userId = req.query.userId;
     if (req.query.action) query.action = req.query.action;
     if (req.query.entity) query.entity = req.query.entity;
@@ -34,10 +35,9 @@ exports.getAuditLogs = async (req, res) => {
 
 exports.getAuditLogById = async (req, res) => {
   try {
-    const auditLog = await AuditLog.findById(req.params.id).populate(
-      "userId",
-      "name email",
-    );
+    const auditLog = await AuditLog.findOne(
+      companyQuery(req, { _id: req.params.id }),
+    ).populate("userId", "name email");
 
     if (!auditLog) {
       return res

@@ -1,4 +1,5 @@
 const AuditLog = require("../models/auditlogModel");
+const { getCompanyId } = require("./tenant");
 
 const createAuditLog = async ({
   userId,
@@ -13,6 +14,7 @@ const createAuditLog = async ({
   try {
     const auditData = {
       userId,
+      company: req ? getCompanyId(req) : null,
       action,
       entity,
       entityId,

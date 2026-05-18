@@ -10,10 +10,12 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
+      min: 0,
     },
     price: {
       type: Number,
       required: true,
+      min: 0,
     },
     category: {
       type: String,
@@ -27,6 +29,12 @@ const productSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
+    },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
       required: true,
       index: true,
     },

@@ -20,9 +20,16 @@ const stockMovementSchema = new mongoose.Schema(
       required: true,
     },
 
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+      index: true,
+    },
+
     movementType: {
       type: String,
-      enum: ["IN", "OUT", "ADJUSTMENT"],
+      enum: ["IN", "OUT", "ADJUSTMENT", "RETURN", "DAMAGED"],
       required: true,
     },
 
