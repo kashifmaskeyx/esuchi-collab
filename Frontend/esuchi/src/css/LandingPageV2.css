@@ -25,7 +25,11 @@ body {
   margin: 0;
   font-family: "Inter", sans-serif;
   background:
-    linear-gradient(180deg, rgba(30, 58, 138, 0.04) 0%, rgba(255, 255, 255, 0) 18%),
+    linear-gradient(
+      180deg,
+      rgba(30, 58, 138, 0.04) 0%,
+      rgba(255, 255, 255, 0) 18%
+    ),
     #f5f7fb;
   color: var(--landing-text);
 }
@@ -113,7 +117,7 @@ select {
 .landing-cta-actions {
   display: flex;
   align-items: center;
-  justify-content: center; 
+  justify-content: center;
   gap: 18px;
 }
 
@@ -176,7 +180,12 @@ select {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(8, 24, 52, 0.78) 0%, rgba(8, 24, 52, 0.48) 46%, rgba(8, 24, 52, 0.08) 100%),
+    linear-gradient(
+      90deg,
+      rgba(8, 24, 52, 0.78) 0%,
+      rgba(8, 24, 52, 0.48) 46%,
+      rgba(8, 24, 52, 0.08) 100%
+    ),
     linear-gradient(0deg, rgba(8, 24, 52, 0.42), rgba(8, 24, 52, 0.05));
 }
 
@@ -388,7 +397,11 @@ select {
   padding: 32px;
   border-radius: 28px;
   background:
-    linear-gradient(135deg, rgba(30, 58, 138, 0.04) 0%, rgba(255, 255, 255, 0.95) 55%),
+    linear-gradient(
+      135deg,
+      rgba(30, 58, 138, 0.04) 0%,
+      rgba(255, 255, 255, 0.95) 55%
+    ),
     var(--landing-surface);
 }
 
@@ -435,7 +448,6 @@ select {
   .landing-hero-actions > *,
   .landing-cta-actions > * {
     flex: 1 1 180px;
-    
   }
 
   .landing-feature-grid,
