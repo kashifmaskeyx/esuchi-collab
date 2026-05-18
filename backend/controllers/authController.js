@@ -15,8 +15,8 @@ const {
 const { getCompanyId } = require("../utils/tenant");
 
 // ================= TOKEN =================
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, {
+const signToken = (id, role) =>
+  jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 
@@ -328,7 +328,7 @@ exports.verifySignupOtp = async (req, res) => {
       await migrateLegacyDataForUser(user._id, company._id);
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
     sendTokenCookie(res, token);
 
     const authUser = await reloadAuthUser(user._id);
@@ -386,7 +386,7 @@ exports.login = async (req, res) => {
         .json({ success: false, message: "Company account is deactivated" });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
     sendTokenCookie(res, token);
 
     res.json({
