@@ -1,0 +1,176 @@
+.user-profile-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.user-profile-trigger {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: #e3f6f5;
+  color: #12b89f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.user-profile-trigger span {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.user-profile-trigger:hover,
+.user-profile-trigger[aria-expanded="true"] {
+  background: #d2f1ee;
+  color: #0ea88f;
+  transform: translateY(-1px);
+}
+
+.user-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: min(320px, calc(100vw - 28px));
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #040b1f;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  z-index: 80;
+  overflow: hidden;
+}
+
+.user-profile-dropdown-head {
+  min-height: 96px;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  background: #f8fbfd;
+  border-bottom: 1px solid #ececec;
+}
+
+.user-profile-photo {
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  background: #e6f5f8;
+  color: #12b89f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-profile-dropdown-head h2,
+.user-profile-dropdown-head p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-profile-dropdown-head h2 {
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.user-profile-dropdown-head p {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #5f6b7a;
+}
+
+.user-profile-details,
+.user-profile-actions,
+.user-profile-logout {
+  padding: 10px 18px;
+}
+
+.user-profile-details {
+  display: grid;
+  gap: 8px;
+}
+
+.user-profile-details div,
+.user-profile-actions button,
+.user-profile-logout button {
+  width: 100%;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.user-profile-details span,
+.user-profile-actions button,
+.user-profile-logout button {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.user-profile-details span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-profile-actions {
+  border-top: 1px solid #ececec;
+  border-bottom: 1px solid #ececec;
+  display: grid;
+  gap: 4px;
+}
+
+.user-profile-actions button,
+.user-profile-logout button {
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #235c94;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.user-profile-actions button:hover,
+.user-profile-logout button:hover {
+  background: #f5f8ff;
+}
+
+.user-profile-logout button {
+  color: #ff4054;
+}
+
+@media (max-width: 720px) {
+  .user-profile-dropdown {
+    right: -2px;
+  }
+
+  .user-profile-dropdown-head {
+    min-height: 92px;
+    grid-template-columns: 64px minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .user-profile-photo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .user-profile-details,
+  .user-profile-actions,
+  .user-profile-logout {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

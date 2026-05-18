@@ -19,7 +19,9 @@ import "../css/ProfilePage.css";
 
 const readLoginNotification = () => {
   try {
-    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    const storedNotification = sessionStorage.getItem(
+      "esuchiLoginNotification",
+    );
     return storedNotification ? JSON.parse(storedNotification) : null;
   } catch {
     return null;
@@ -73,13 +75,14 @@ export default function ProfilePage() {
   const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const initials = savedProfile.name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() ||
+  const initials =
+    savedProfile.name
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ||
     savedProfile.email.slice(0, 2).toUpperCase() ||
     "U";
   const emailChanged =
@@ -87,9 +90,7 @@ export default function ProfilePage() {
     savedProfile.email.trim().toLowerCase();
   const notifications = useMemo(
     () =>
-      loginNotification
-        ? [{ id: "login-success", ...loginNotification }]
-        : [],
+      loginNotification ? [{ id: "login-success", ...loginNotification }] : [],
     [loginNotification],
   );
 
@@ -321,9 +322,7 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="notification-empty">
-                      No new notifications.
-                    </p>
+                    <p className="notification-empty">No new notifications.</p>
                   )}
                 </div>
               ) : null}
@@ -341,7 +340,10 @@ export default function ProfilePage() {
         </header>
 
         <section className="profile-shell">
-          <aside className="profile-settings-nav" aria-label="Account settings sections">
+          <aside
+            className="profile-settings-nav"
+            aria-label="Account settings sections"
+          >
             <p>General Settings</p>
             <button type="button" className="active">
               <UserRound size={17} />
@@ -423,7 +425,9 @@ export default function ProfilePage() {
                         </span>
                       ) : null}
                       {emailOtpError ? (
-                        <span className="profile-otp-error">{emailOtpError}</span>
+                        <span className="profile-otp-error">
+                          {emailOtpError}
+                        </span>
                       ) : null}
                     </div>
                   ) : null}
@@ -456,7 +460,9 @@ export default function ProfilePage() {
               <div className="profile-panel-head">
                 <div>
                   <h2>Change Password</h2>
-                  <p>Use a strong password to keep your inventory data protected.</p>
+                  <p>
+                    Use a strong password to keep your inventory data protected.
+                  </p>
                 </div>
                 <span className="profile-panel-icon">
                   <KeyRound size={18} />

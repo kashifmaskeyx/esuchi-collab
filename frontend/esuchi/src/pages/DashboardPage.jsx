@@ -10,8 +10,8 @@ import {
   Boxes,
 } from "lucide-react";
 import DashboardCard from "../components/DashboardCard";
+import UserProfileMenu from "../components/UserProfileMenu";
 import { getDashboardData } from "../api/dashboard";
-import { getUserInitials } from "../api/auth";
 import { getShipments } from "../api/shipments";
 import "../css/Dashboard.css";
 
@@ -89,7 +89,6 @@ export default function DashboardPage() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNotifications, setShowNotifications] = useState(
     Boolean(location.state?.openNotifications),
@@ -376,14 +375,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            <button
-              type="button"
-              className="avatar-chip"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 

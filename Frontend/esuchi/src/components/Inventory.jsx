@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,9 +12,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
 import Pagination from "./Pagination";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Inventory.css";
 
 const emptyMovementForm = {
@@ -109,8 +109,6 @@ const getMovementLabel = (movementType) => {
 
 export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -554,14 +552,7 @@ export default function Inventory() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="inventory-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu />
           </div>
         </header>
 

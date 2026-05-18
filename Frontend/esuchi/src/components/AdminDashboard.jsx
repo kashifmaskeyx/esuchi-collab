@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Activity,
   BadgeDollarSign,
   Bell,
+  Building2,
   CircleDollarSign,
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Mail,
+  MapPin,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -16,6 +20,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Settings,
+  Ticket,
   Truck,
   Trash2,
   UserCog,
@@ -227,6 +232,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const notificationRef = useRef(null);
+  const adminProfileMenuRef = useRef(null);
   const userInitials = useMemo(() => getUserInitials(adminUser) || "EA", []);
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.innerWidth > 980,
@@ -263,6 +269,7 @@ export default function AdminDashboard() {
   const [showNotifications, setShowNotifications] = useState(
     Boolean(location.state?.openNotifications),
   );
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [loginNotification, setLoginNotification] = useState(() =>
     readLoginNotification(),
   );
@@ -358,6 +365,24 @@ export default function AdminDashboard() {
     };
   }, [showNotifications]);
 
+  useEffect(() => {
+    if (!showProfileMenu) {
+      return undefined;
+    }
+
+    const closeProfileMenu = (event) => {
+      if (!adminProfileMenuRef.current?.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeProfileMenu);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeProfileMenu);
+    };
+  }, [showProfileMenu]);
+
   const handleAdminNavClick = (label) => {
     setActiveAdminView(label);
     setSearchTerm("");
@@ -366,6 +391,11 @@ export default function AdminDashboard() {
     if (window.innerWidth <= 980) {
       setSidebarOpen(false);
     }
+  };
+
+  const handleAdminLogout = () => {
+    logoutUser();
+    navigate("/login");
   };
 
   useEffect(() => {
@@ -1394,17 +1424,6 @@ export default function AdminDashboard() {
           </ul>
         </nav>
 
-        <button
-          type="button"
-          className="admin-sidebar-logout"
-          onClick={() => {
-            logoutUser();
-            navigate("/login");
-          }}
-        >
-          <LogOut size={17} />
-          <span>Logout</span>
-        </button>
       </aside>
 
       <button
@@ -1484,14 +1503,100 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <button
-              type="button"
-              className="avatar-chip"
-              onClick={() => setActiveAdminView("Settings")}
-              aria-label="Open admin settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <div className="admin-profile-menu-wrap" ref={adminProfileMenuRef}>
+              <button
+                type="button"
+                className="avatar-chip admin-profile-trigger"
+                onClick={() => setShowProfileMenu((current) => !current)}
+                aria-label="Open admin profile menu"
+                aria-expanded={showProfileMenu}
+              >
+                <span>{userInitials}</span>
+              </button>
+
+              {showProfileMenu ? (
+                <div className="admin-profile-dropdown" role="menu">
+                  <div className="admin-profile-dropdown-head">
+                    <div className="admin-profile-dropdown-photo">
+                      <UserCog size={48} />
+                    </div>
+                    <div>
+                      <h2>{adminUser.name}</h2>
+                      <p>Administrator</p>
+                    </div>
+                  </div>
+
+                  <div className="admin-profile-dropdown-details">
+                    <div>
+                      <Mail size={18} />
+                      <span>{adminUser.email}</span>
+                    </div>
+                    <div>
+                      <Building2 size={18} />
+                      <span>eSuchi Admin Workspace</span>
+                    </div>
+                    <div>
+                      <MapPin size={18} />
+                      <span>Kathmandu, Nepal</span>
+                    </div>
+                  </div>
+
+                  <div className="admin-profile-dropdown-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleAdminNavClick("Overview");
+                      }}
+                    >
+                      <LayoutDashboard size={18} />
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleAdminNavClick("Settings");
+                      }}
+                    >
+                      <UserCog size={18} />
+                      My Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleAdminNavClick("Users");
+                      }}
+                    >
+                      <UsersRound size={18} />
+                      User Management
+                    </button>
+                    <button type="button">
+                      <Ticket size={18} />
+                      Redeem Codes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleAdminNavClick("Revenue");
+                      }}
+                    >
+                      <Activity size={18} />
+                      Platform Activities
+                    </button>
+                  </div>
+
+                  <div className="admin-profile-dropdown-logout">
+                    <button type="button" onClick={handleAdminLogout}>
+                      <LogOut size={18} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
