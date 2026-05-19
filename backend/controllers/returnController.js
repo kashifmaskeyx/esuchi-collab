@@ -42,15 +42,8 @@ const getReturnedQuantityForOrderItem = async (
 
 exports.createReturn = async (req, res) => {
   try {
-    const {
-      order,
-      product,
-      quantity,
-      condition,
-      resolution,
-      reason,
-      notes,
-    } = req.body;
+    const { order, product, quantity, condition, resolution, reason, notes } =
+      req.body;
 
     const numericQuantity = Number(quantity);
 
@@ -81,9 +74,13 @@ exports.createReturn = async (req, res) => {
     }
 
     if (
-      !["restocked", "quarantined", "disposed", "refund", "replacement"].includes(
-        resolution,
-      )
+      ![
+        "restocked",
+        "quarantined",
+        "disposed",
+        "refund",
+        "replacement",
+      ].includes(resolution)
     ) {
       return res.status(400).json({
         success: false,
@@ -149,13 +146,16 @@ exports.createReturn = async (req, res) => {
         );
 
         if (alreadyReturned + numericQuantity > orderItem.quantity) {
-          const error = new Error("Return quantity exceeds the ordered quantity");
+          const error = new Error(
+            "Return quantity exceeds the ordered quantity",
+          );
           error.statusCode = 400;
           throw error;
         }
       }
 
-      const shouldRestock = condition === "restockable" && resolution === "restocked";
+      const shouldRestock =
+        condition === "restockable" && resolution === "restocked";
 
       if (shouldRestock) {
         const inventory = await Inventory.findOneAndUpdate(

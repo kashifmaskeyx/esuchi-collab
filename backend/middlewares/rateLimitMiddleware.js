@@ -1,53 +1,56 @@
+const buckets = new Map();
+
+const defaultKeyGenerator = (req) => `${req.ip}:${req.originalUrl}`;
+
 const createRateLimiter = ({
-  windowMs,
-  maxRequests,
-  message,
-}) => {
-  const requestStore = new Map();
-
+  windowMs = 15 * 60 * 1000,
+  max = 30,
+  keyGenerator = defaultKeyGenerator,
+  message = "Too many requests. Please try again later.",
+} = {}) => {
   return (req, res, next) => {
-    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
     const now = Date.now();
-    const windowStart = now - windowMs;
+    const key = keyGenerator(req);
+    const existing = buckets.get(key);
 
-    const existing = requestStore.get(ip) || [];
-    const recentRequests = existing.filter((timestamp) => timestamp > windowStart);
-    recentRequests.push(now);
-    requestStore.set(ip, recentRequests);
-
-    if (recentRequests.length > maxRequests) {
-      const retryAfterSeconds = Math.ceil((recentRequests[0] + windowMs - now) / 1000);
-      res.setHeader("Retry-After", Math.max(retryAfterSeconds, 1));
-      return res.status(429).json({
-        success: false,
-        message,
-      });
+    if (!existing || existing.resetAt <= now) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
     }
 
+    if (existing.count >= max) {
+      const retryAfterSeconds = Math.ceil((existing.resetAt - now) / 1000);
+      res.set("Retry-After", String(retryAfterSeconds));
+      return res.status(429).json({ success: false, message });
+    }
+
+    existing.count += 1;
     return next();
   };
 };
 
-const authRateLimit = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  maxRequests: 10,
-  message: "Too many login/reset attempts. Please try again later.",
-});
-
-const otpRequestRateLimit = createRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  maxRequests: 5,
-  message: "Too many OTP requests. Please wait before trying again.",
-});
-
-const otpVerifyRateLimit = createRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  maxRequests: 10,
-  message: "Too many OTP verification attempts. Please try again later.",
-});
-
-module.exports = {
-  authRateLimit,
-  otpRequestRateLimit,
-  otpVerifyRateLimit,
+const emailKey = (req) => {
+  const email = String(req.body?.email || "")
+    .trim()
+    .toLowerCase();
+  return `${req.ip}:${req.path}:${email || "no-email"}`;
 };
+
+exports.authRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+});
+
+exports.otpRequestRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: emailKey,
+  message: "Too many code requests. Please wait before trying again.",
+});
+
+exports.otpVerifyRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  keyGenerator: emailKey,
+  message: "Too many verification attempts. Please wait before trying again.",
+});

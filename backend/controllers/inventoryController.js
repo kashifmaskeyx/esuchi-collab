@@ -167,34 +167,36 @@ exports.updateStock = async (req, res) => {
         .json({ message: "Current stock must be 0 or greater" });
     }
 
-    const { inventory, oldInventory } = await withTransaction(async (session) => {
-      const existingInventory = await Inventory.findOne(
-        companyQuery(req, { _id: req.params.id }),
-      ).session(session);
+    const { inventory, oldInventory } = await withTransaction(
+      async (session) => {
+        const existingInventory = await Inventory.findOne(
+          companyQuery(req, { _id: req.params.id }),
+        ).session(session);
 
-      if (!existingInventory) {
-        const error = new Error("Inventory not found");
-        error.statusCode = 404;
-        throw error;
-      }
+        if (!existingInventory) {
+          const error = new Error("Inventory not found");
+          error.statusCode = 404;
+          throw error;
+        }
 
-      const previousInventory = existingInventory.toObject();
+        const previousInventory = existingInventory.toObject();
 
-      existingInventory.currentStock = numericStock;
-      existingInventory.lastUpdated = Date.now();
-      await existingInventory.save({ session });
+        existingInventory.currentStock = numericStock;
+        existingInventory.lastUpdated = Date.now();
+        await existingInventory.save({ session });
 
-      await Product.findOneAndUpdate(
-        companyQuery(req, { _id: existingInventory.product }),
-        { quantity: numericStock },
-        { runValidators: true, session },
-      );
+        await Product.findOneAndUpdate(
+          companyQuery(req, { _id: existingInventory.product }),
+          { quantity: numericStock },
+          { runValidators: true, session },
+        );
 
-      return {
-        inventory: existingInventory,
-        oldInventory: previousInventory,
-      };
-    });
+        return {
+          inventory: existingInventory,
+          oldInventory: previousInventory,
+        };
+      },
+    );
 
     await createAuditLog({
       userId: req.user._id,

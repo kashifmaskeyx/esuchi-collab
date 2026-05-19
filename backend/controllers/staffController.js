@@ -51,7 +51,9 @@ exports.createStaff = async (req, res) => {
     res.status(201).json({ success: true, data: staff });
   } catch (err) {
     const message =
-      err.code === 11000 ? "Staff email already exists" : "Unable to create staff member";
+      err.code === 11000
+        ? "Staff email already exists"
+        : "Unable to create staff member";
     res.status(400).json({ success: false, message });
   }
 };
@@ -60,10 +62,14 @@ exports.getStaff = async (req, res) => {
   try {
     const companyId = getCompanyId(req);
     const users = await User.find({ company: companyId })
-      .select("name email role membershipStatus isActive isVerified createdAt updatedAt")
+      .select(
+        "name email role membershipStatus isActive isVerified createdAt updatedAt",
+      )
       .sort("-createdAt");
 
-    const staffInvites = await Staff.find({ company: companyId }).sort("-createdAt");
+    const staffInvites = await Staff.find({ company: companyId }).sort(
+      "-createdAt",
+    );
     const userEmails = new Set(users.map((user) => user.email));
     const inviteRows = staffInvites
       .filter((staff) => !userEmails.has(staff.email))
@@ -86,7 +92,9 @@ exports.getJoinRequests = async (req, res) => {
       company: getCompanyId(req),
       membershipStatus: "pending",
     })
-      .select("name email role membershipStatus isActive isVerified createdAt updatedAt")
+      .select(
+        "name email role membershipStatus isActive isVerified createdAt updatedAt",
+      )
       .sort("-createdAt");
 
     res.json({
@@ -95,7 +103,9 @@ exports.getJoinRequests = async (req, res) => {
       data: users.map(formatUserRow),
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Unable to load join requests" });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to load join requests" });
   }
 };
 
@@ -104,7 +114,9 @@ exports.approveStaff = async (req, res) => {
     const user = await findCompanyUser(req, req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     user.membershipStatus = "approved";
@@ -131,13 +143,18 @@ exports.rejectStaff = async (req, res) => {
     const user = await findCompanyUser(req, req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (String(user._id) === String(req.user._id)) {
       return res
         .status(400)
-        .json({ success: false, message: "You cannot reject your own account" });
+        .json({
+          success: false,
+          message: "You cannot reject your own account",
+        });
     }
 
     user.membershipStatus = "rejected";
@@ -159,13 +176,18 @@ exports.suspendStaff = async (req, res) => {
     const user = await findCompanyUser(req, req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (String(user._id) === String(req.user._id)) {
       return res
         .status(400)
-        .json({ success: false, message: "You cannot suspend your own account" });
+        .json({
+          success: false,
+          message: "You cannot suspend your own account",
+        });
     }
 
     if (user.role === "admin") {
@@ -262,7 +284,9 @@ exports.updateStaff = async (req, res) => {
     res.json({ success: true, data: staff });
   } catch (err) {
     const message =
-      err.code === 11000 ? "Staff email already exists" : "Unable to update staff member";
+      err.code === 11000
+        ? "Staff email already exists"
+        : "Unable to update staff member";
     res.status(400).json({ success: false, message });
   }
 };
@@ -275,7 +299,10 @@ exports.deleteStaff = async (req, res) => {
       if (String(user._id) === String(req.user._id)) {
         return res
           .status(400)
-          .json({ success: false, message: "You cannot remove your own account" });
+          .json({
+            success: false,
+            message: "You cannot remove your own account",
+          });
       }
 
       user.membershipStatus = "rejected";
@@ -298,6 +325,8 @@ exports.deleteStaff = async (req, res) => {
 
     res.json({ success: true, message: "Staff member removed" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Unable to delete staff member" });
+    res
+      .status(500)
+      .json({ success: false, message: "Unable to delete staff member" });
   }
 };
