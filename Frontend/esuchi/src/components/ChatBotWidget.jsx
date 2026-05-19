@@ -45,15 +45,17 @@ export default function ChatBotWidget({
   introBubble,
   initialMessage,
   placeholder,
-  suggestions = [],
   storageKey,
   sessionStorageKey,
   sendMessage,
+  proactiveMessage,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [hasLoadedProactiveMessage, setHasLoadedProactiveMessage] =
+    useState(false);
   const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState(() =>
     readStoredJson(storageKey, [
@@ -67,8 +69,8 @@ export default function ChatBotWidget({
   const messagesEndRef = useRef(null);
 
   const activeSuggestions = useMemo(
-    () => (dynamicSuggestions.length ? dynamicSuggestions : suggestions),
-    [dynamicSuggestions, suggestions],
+    () => (pendingAction ? ["Confirm", "Cancel"] : []),
+    [pendingAction],
   );
 
   useEffect(() => {
@@ -86,9 +88,84 @@ export default function ChatBotWidget({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [isOpen, messages, isSending]);
 
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !proactiveMessage ||
+      hasLoadedProactiveMessage ||
+      isSending
+    ) {
+      return;
+    }
+
+    const loadProactiveMessage = async () => {
+      setHasLoadedProactiveMessage(true);
+      setIsSending(true);
+
+      try {
+        const response = await sendMessage({
+          message: proactiveMessage,
+          sessionId,
+        });
+        const botText =
+          response?.message ||
+          "Inventory Copilot is ready. Ask me about stock, summaries, or navigation.";
+        setMessages((current) => [
+          ...current,
+          {
+            id: createId(),
+            role: "assistant",
+            text: botText,
+          },
+        ]);
+      } catch {
+        setMessages((current) => [
+          ...current,
+          {
+            id: createId(),
+            role: "assistant",
+            text: "Inventory Copilot is ready, but I could not load live alerts yet.",
+            isError: true,
+          },
+        ]);
+      } finally {
+        setIsSending(false);
+      }
+    };
+
+    loadProactiveMessage();
+  }, [
+    hasLoadedProactiveMessage,
+    isOpen,
+    isSending,
+    proactiveMessage,
+    sendMessage,
+    sessionId,
+  ]);
+
   const submitMessage = async (text) => {
     const trimmedText = text.trim();
     if (!trimmedText || isSending) return;
+    const normalizedText = trimmedText.toLowerCase();
+
+    if (pendingAction && ["cancel", "stop", "no"].includes(normalizedText)) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          role: "user",
+          text: trimmedText,
+        },
+        {
+          id: createId(),
+          role: "assistant",
+          text: "Cancelled. I did not make any stock changes.",
+        },
+      ]);
+      setPendingAction(null);
+      setInputValue("");
+      return;
+    }
 
     const userMessage = {
       id: createId(),
@@ -98,19 +175,22 @@ export default function ChatBotWidget({
 
     setMessages((current) => [...current, userMessage]);
     setInputValue("");
-    setDynamicSuggestions([]);
     setIsSending(true);
 
     try {
+      const actionToSend =
+        pendingAction && ["confirm", "yes", "proceed"].includes(normalizedText)
+          ? { ...pendingAction, confirmed: true, confirmLowStock: true }
+          : undefined;
       const response = await sendMessage({
-        message: trimmedText,
+        message: actionToSend ? "" : trimmedText,
         sessionId,
+        action: actionToSend,
       });
       const botText =
         response?.message ||
         "I am here, but I could not format that response clearly.";
-      const responseSuggestions =
-        response?.data?.suggestions || response?.suggestions || [];
+      const nextPendingAction = response?.data?.pendingAction || null;
 
       if (response?.sessionId && response.sessionId !== sessionId) {
         setSessionId(response.sessionId);
@@ -127,7 +207,7 @@ export default function ChatBotWidget({
           text: botText,
         },
       ]);
-      setDynamicSuggestions(responseSuggestions.slice(0, 3));
+      setPendingAction(nextPendingAction);
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -140,6 +220,7 @@ export default function ChatBotWidget({
           isError: true,
         },
       ]);
+      setPendingAction(null);
     } finally {
       setIsSending(false);
     }

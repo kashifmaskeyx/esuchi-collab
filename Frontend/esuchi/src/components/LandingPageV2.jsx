@@ -326,15 +326,10 @@ export default function LandingPageV2() {
         variant="landing"
         title="eSuchi AI Guide"
         subtitle="Always Active"
-        introBubble="Hi! I'm your eSuchi guide. How can I help you manage your logistics today?"
-        initialMessage="Namaste! I can answer FAQs, explain eSuchi features, share service details, or help you understand inventory and shipment workflows. What's on your mind?"
+        introBubble="Ask the eSuchi AI assistant anything about the system."
+        initialMessage="Hi, I am the eSuchi AI assistant. Ask me anything about the website, features, roles, or navigation."
         placeholder="Type your message..."
-        suggestions={[
-          "How to track shipments?",
-          "Pricing plans",
-          "Contact Support",
-        ]}
-        storageKey="esuchi_landing_chat_history"
+        storageKey="esuchi_landing_ai_chat_history_v3"
         sessionStorageKey="esuchi_landing_chat_session"
         sendMessage={sendLandingChatMessage}
       />

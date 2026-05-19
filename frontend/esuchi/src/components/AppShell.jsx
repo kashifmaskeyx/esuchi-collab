@@ -36,15 +36,10 @@ export default function AppShell() {
         variant="app"
         title="eSuchi Ops Assistant"
         subtitle="Connected to your workspace"
-        introBubble="Need a quick operations check? Ask me about today's summary, low stock, or inventory actions."
-        initialMessage="Welcome back! I can check your low-stock items, summarize today's orders and stock movements, or guide safe inventory updates."
+        introBubble="Ask the eSuchi AI assistant about your workspace."
+        initialMessage="Hi, I am the eSuchi AI assistant. Ask me anything about your dashboard, inventory, navigation, or stock work."
         placeholder="Ask about your operations..."
-        suggestions={[
-          "Show low stock items",
-          "Give me today's summary",
-          "How can I update stock safely?",
-        ]}
-        storageKey="esuchi_app_chat_history"
+        storageKey="esuchi_app_ai_chat_history_v3"
         sendMessage={sendAppChatMessage}
       />
     </>
