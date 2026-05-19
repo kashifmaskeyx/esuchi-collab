@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import "../css/LoginCard.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { isAdminEmail, loginUser } from "../api/auth.js";
+import { loginUser } from "../api/auth.js";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
 
 const saveLoginNotification = (notification) => {
-  sessionStorage.setItem("esuchiLoginNotification", JSON.stringify(notification));
+  sessionStorage.setItem(
+    "esuchiLoginNotification",
+    JSON.stringify(notification),
+  );
 };
 
 export default function LoginCard() {
@@ -27,20 +30,30 @@ export default function LoginCard() {
     setError("");
     setLoading(true);
     try {
-      await loginUser(form);
-      const isAdminLogin = isAdminEmail(form.email);
+      const response = await loginUser(form);
+      const isAdminLogin = response.user?.role === "admin";
+      const isPending = response.requiresApproval;
       saveLoginNotification({
-        title: "Login successful",
-        message: isAdminLogin
-          ? "Welcome back. Your admin page is ready."
-          : "Welcome back. Your dashboard is ready.",
-        tone: "success",
+        title: isPending ? "Approval pending" : "Login successful",
+        message: isPending
+          ? "Your company admin still needs to approve your account."
+          : isAdminLogin
+            ? "Welcome back. Your admin page is ready."
+            : "Welcome back. Your dashboard is ready.",
+        tone: isPending ? "info" : "success",
       });
-      navigate(isAdminLogin ? "/admin" : "/dashboard", {
-        state: {
-          openNotifications: true,
+      navigate(
+        isPending
+          ? "/pending-approval"
+          : isAdminLogin
+            ? "/admin"
+            : "/dashboard",
+        {
+          state: {
+            openNotifications: true,
+          },
         },
-      });
+      );
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -56,7 +69,9 @@ export default function LoginCard() {
           <img src={logo} alt="eSuchi logo" className="login-logo" />
           <h2 className="login-title">Welcome</h2>
           <p className="login-subtitle">Please enter your details</p>
-          {loginMessage ? <p className="login-success">{loginMessage}</p> : null}
+          {loginMessage ? (
+            <p className="login-success">{loginMessage}</p>
+          ) : null}
 
           <form onSubmit={handleSubmit} className="login-form">
             <input

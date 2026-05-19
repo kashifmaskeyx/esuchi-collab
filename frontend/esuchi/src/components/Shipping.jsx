@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
   CirclePlus,
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { getUserInitials } from "../api/auth";
 import {
   createShipment,
   deleteShipment,
@@ -21,12 +22,13 @@ import {
   getSuppliers,
   updateShipmentStatus,
 } from "../api/shipments";
-import UserProfileMenu from "./UserProfileMenu";
 import "../css/Shipping.css";
 
 const readLoginNotification = () => {
   try {
-    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    const storedNotification = sessionStorage.getItem(
+      "esuchiLoginNotification",
+    );
     return storedNotification ? JSON.parse(storedNotification) : null;
   } catch {
     return null;
@@ -64,6 +66,8 @@ const formatStatusLabel = (status) => {
 
 export default function Shipping() {
   const { sidebarOpen } = useOutletContext();
+  const navigate = useNavigate();
+  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -190,21 +194,24 @@ export default function Shipping() {
       },
       {
         title: "Pending Shipments",
-        value: shipments.filter((shipment) => shipment.status === "pending").length,
+        value: shipments.filter((shipment) => shipment.status === "pending")
+          .length,
         note: "Awaiting shipment progress",
         icon: PackageCheck,
         tone: "blue",
       },
       {
         title: "In Transit",
-        value: shipments.filter((shipment) => shipment.status === "in_transit").length,
+        value: shipments.filter((shipment) => shipment.status === "in_transit")
+          .length,
         note: "Currently on the way",
         icon: Truck,
         tone: "amber",
       },
       {
         title: "Delivered",
-        value: shipments.filter((shipment) => shipment.status === "delivered").length,
+        value: shipments.filter((shipment) => shipment.status === "delivered")
+          .length,
         note: "Completed shipment records",
         icon: CircleCheckBig,
         tone: "green",
@@ -274,8 +281,14 @@ export default function Shipping() {
     event.preventDefault();
     setSubmitError("");
 
-    if (!createForm.supplier || !createForm.product || !createForm.expectedDeliveryDate) {
-      setSubmitError("Supplier, product, and expected delivery date are required.");
+    if (
+      !createForm.supplier ||
+      !createForm.product ||
+      !createForm.expectedDeliveryDate
+    ) {
+      setSubmitError(
+        "Supplier, product, and expected delivery date are required.",
+      );
       return;
     }
 
@@ -336,7 +349,9 @@ export default function Shipping() {
   };
 
   const handleDeleteShipment = async (shipment) => {
-    const confirmed = window.confirm(`Delete shipment ${shipment.shipmentId || ""}?`);
+    const confirmed = window.confirm(
+      `Delete shipment ${shipment.shipmentId || ""}?`,
+    );
 
     if (!confirmed) {
       return;
@@ -407,15 +422,20 @@ export default function Shipping() {
                       ))}
                     </div>
                   ) : (
-                    <p className="notification-empty">
-                      No new notifications.
-                    </p>
+                    <p className="notification-empty">No new notifications.</p>
                   )}
                 </div>
               ) : null}
             </div>
 
-            <UserProfileMenu />
+            <button
+              type="button"
+              className="shipping-profile"
+              onClick={() => navigate("/settings")}
+              aria-label="Open account settings"
+            >
+              <div className="shipping-profile-avatar">{userInitials}</div>
+            </button>
           </div>
         </header>
 
@@ -527,7 +547,9 @@ export default function Shipping() {
                         <td>{totalQuantity}</td>
                         <td>
                           <span
-                            className={`shipping-status ${String(shipment.status)
+                            className={`shipping-status ${String(
+                              shipment.status,
+                            )
                               .toLowerCase()
                               .replace(/\s+/g, "-")}`}
                           >
@@ -539,7 +561,9 @@ export default function Shipping() {
                         <td>{shipment.notes || "-"}</td>
                         <td>
                           <div className="shipping-row-actions">
-                            {["pending", "in_transit"].includes(shipment.status) ? (
+                            {["pending", "in_transit"].includes(
+                              shipment.status,
+                            ) ? (
                               <button
                                 type="button"
                                 className="shipping-row-btn edit"
@@ -576,13 +600,23 @@ export default function Shipping() {
 
         {isCreateModalOpen ? (
           <div className="shipping-modal-backdrop" onClick={closeModals}>
-            <div className="shipping-modal" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="shipping-modal"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="shipping-modal-head">
                 <div>
                   <h2>Create Shipment</h2>
-                  <p>Add a shipment record using backend supplier and product entities.</p>
+                  <p>
+                    Add a shipment record using backend supplier and product
+                    entities.
+                  </p>
                 </div>
-                <button type="button" className="shipping-modal-close" onClick={closeModals}>
+                <button
+                  type="button"
+                  className="shipping-modal-close"
+                  onClick={closeModals}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -651,13 +685,23 @@ export default function Shipping() {
                   />
                 </label>
 
-                {submitError ? <p className="shipping-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="shipping-form-error">{submitError}</p>
+                ) : null}
 
                 <div className="shipping-form-actions">
-                  <button type="button" className="shipping-form-secondary" onClick={closeModals}>
+                  <button
+                    type="button"
+                    className="shipping-form-secondary"
+                    onClick={closeModals}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="shipping-create-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="shipping-create-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Creating..." : "Create Shipment"}
                   </button>
                 </div>
@@ -668,13 +712,20 @@ export default function Shipping() {
 
         {isEditModalOpen ? (
           <div className="shipping-modal-backdrop" onClick={closeModals}>
-            <div className="shipping-modal shipping-modal-small" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="shipping-modal shipping-modal-small"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="shipping-modal-head">
                 <div>
                   <h2>Edit Shipment Status</h2>
                   <p>Update the status for pending or in-transit shipments.</p>
                 </div>
-                <button type="button" className="shipping-modal-close" onClick={closeModals}>
+                <button
+                  type="button"
+                  className="shipping-modal-close"
+                  onClick={closeModals}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -682,7 +733,10 @@ export default function Shipping() {
               <form className="shipping-form" onSubmit={handleUpdateStatus}>
                 <label className="shipping-form-full">
                   <span>Status</span>
-                  <select value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
+                  <select
+                    value={editStatus}
+                    onChange={(event) => setEditStatus(event.target.value)}
+                  >
                     <option value="pending">Pending</option>
                     <option value="in_transit">In Transit</option>
                     <option value="delivered">Delivered</option>
@@ -690,13 +744,23 @@ export default function Shipping() {
                   </select>
                 </label>
 
-                {submitError ? <p className="shipping-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="shipping-form-error">{submitError}</p>
+                ) : null}
 
                 <div className="shipping-form-actions">
-                  <button type="button" className="shipping-form-secondary" onClick={closeModals}>
+                  <button
+                    type="button"
+                    className="shipping-form-secondary"
+                    onClick={closeModals}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="shipping-create-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="shipping-create-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Saving..." : "Save Status"}
                   </button>
                 </div>
