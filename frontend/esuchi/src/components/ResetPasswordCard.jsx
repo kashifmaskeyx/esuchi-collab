@@ -18,8 +18,9 @@ export default function ResetPasswordCard() {
 
   const email = location.state?.email;
   const resetVerified = location.state?.resetVerified;
+  const resetToken = location.state?.resetToken;
 
-  if (!email || !resetVerified) {
+  if (!email || !resetVerified || !resetToken) {
     return <Navigate to="/forgot-password" replace />;
   }
 
@@ -41,6 +42,7 @@ export default function ResetPasswordCard() {
     try {
       const response = await resetPassword({
         email,
+        resetToken,
         password: form.password,
         confirmPassword: form.confirmPassword,
       });

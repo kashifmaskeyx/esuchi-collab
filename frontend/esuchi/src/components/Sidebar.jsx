@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import logoIn from "../assets/LogoIn.png";
 import {
@@ -9,9 +9,12 @@ import {
   ShoppingCart,
   Truck,
   Boxes,
+  RotateCcw,
+  LogOut,
   PanelLeftClose,
   X,
 } from "lucide-react";
+import { logoutUser } from "../api/auth";
 import "../css/Sidebar.css";
 
 const mainItems = [
@@ -19,11 +22,13 @@ const mainItems = [
   { label: "Inventory", icon: Boxes, path: "/inventory" },
   { label: "Products", icon: Package, path: "/products" },
   { label: "Sales Orders", icon: ShoppingCart, path: "/orders" },
+  { label: "Returns", icon: RotateCcw, path: "/returns" },
   { label: "Shipment", icon: Truck, path: "/shipment" },
   { label: "Staff & Roles", icon: ShieldCheck, path: "/staff" },
 ];
 
 function Sidebar({ isOpen, onClose, onToggle }) {
+  const navigate = useNavigate();
   const handleNavClick = () => {
     if (window.innerWidth <= 980) {
       onClose();
@@ -33,18 +38,11 @@ function Sidebar({ isOpen, onClose, onToggle }) {
   return (
     <aside className={`sidebar-panel ${isOpen ? "open" : "closed"}`}>
       <div className="sidebar-header">
-        <NavLink
-          to="/dashboard"
-          className="sidebar-logo-link"
-          onClick={handleNavClick}
-          aria-label="Go to dashboard"
-        >
-          <img
-            src={isOpen ? logo : logoIn}
-            alt="eSuchi"
-            className={`sidebar-logo ${isOpen ? "expanded" : "collapsed"}`}
-          />
-        </NavLink>
+        <img
+          src={isOpen ? logo : logoIn}
+          alt="eSuchi"
+          className={`sidebar-logo ${isOpen ? "expanded" : "collapsed"}`}
+        />
         <button
           className="sidebar-mini-btn"
           type="button"
@@ -79,6 +77,18 @@ function Sidebar({ isOpen, onClose, onToggle }) {
           </ul>
         </div>
       </nav>
+
+      <button
+        type="button"
+        className="sidebar-logout-btn"
+        onClick={async () => {
+          await logoutUser();
+          navigate("/login");
+        }}
+      >
+        <LogOut size={17} />
+        <span>Logout</span>
+      </button>
     </aside>
   );
 }

@@ -13,7 +13,10 @@ export default function RegisterCard() {
     email: "",
     phone: "+977 ",
     password: "",
+    companyName: "",
+    joinCode: "",
   });
+  const [accountType, setAccountType] = useState("company");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,6 +76,16 @@ export default function RegisterCard() {
       return;
     }
 
+    if (accountType === "company" && !form.companyName.trim()) {
+      setError("Enter your company name");
+      return;
+    }
+
+    if (accountType === "employee" && !form.joinCode.trim()) {
+      setError("Enter your company join code");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -86,6 +99,12 @@ export default function RegisterCard() {
           email: form.email.trim(),
           name,
           password: form.password,
+          companyName:
+            accountType === "company" ? form.companyName.trim() : undefined,
+          joinCode:
+            accountType === "employee"
+              ? form.joinCode.trim().toUpperCase()
+              : undefined,
           message: response.message || "OTP sent to your email",
         },
       });
@@ -109,6 +128,37 @@ export default function RegisterCard() {
           </p>
 
           <form onSubmit={handleSubmit} className="register-form">
+            <div
+              className="register-mode-tabs"
+              role="tablist"
+              aria-label="Account type"
+            >
+              <button
+                type="button"
+                className={`register-mode-tab ${
+                  accountType === "company" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setAccountType("company");
+                  setError("");
+                }}
+              >
+                Register company
+              </button>
+              <button
+                type="button"
+                className={`register-mode-tab ${
+                  accountType === "employee" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setAccountType("employee");
+                  setError("");
+                }}
+              >
+                Join company
+              </button>
+            </div>
+
             <div className="register-name-row">
               <input
                 type="text"
@@ -150,6 +200,33 @@ export default function RegisterCard() {
               maxLength={15}
               className="register-input"
             />
+
+            {accountType === "company" ? (
+              <input
+                type="text"
+                name="companyName"
+                placeholder="Company name"
+                value={form.companyName}
+                onChange={handleChange}
+                required
+                className="register-input"
+              />
+            ) : (
+              <input
+                type="text"
+                name="joinCode"
+                placeholder="Company join code"
+                value={form.joinCode}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    joinCode: event.target.value.toUpperCase(),
+                  }))
+                }
+                required
+                className="register-input"
+              />
+            )}
 
             <div className="register-password-field">
               <input

@@ -7,7 +7,6 @@ import {
   requestSignupOtp,
   verifyOtp,
   verifySignupOtp,
-  isAdminEmail,
 } from "../api/auth";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
@@ -25,6 +24,8 @@ export default function OtpCard() {
   const source = location.state?.source;
   const name = location.state?.name;
   const password = location.state?.password;
+  const companyName = location.state?.companyName;
+  const joinCode = location.state?.joinCode;
 
   const isForgotPasswordFlow = source === "forgot-password";
   const isSignupFlow = source === "signup";
@@ -34,7 +35,9 @@ export default function OtpCard() {
   }
 
   if (!email) {
-    return <Navigate to={isSignupFlow ? "/register" : "/forgot-password"} replace />;
+    return (
+      <Navigate to={isSignupFlow ? "/register" : "/forgot-password"} replace />
+    );
   }
 
   if (isSignupFlow && (!name || !password)) {
@@ -75,22 +78,32 @@ export default function OtpCard() {
 
     try {
       if (isSignupFlow) {
-        await verifySignupOtp({
+        const response = await verifySignupOtp({
           email,
           otp: code,
           name,
           password,
+          companyName,
+          joinCode,
         });
-        navigate(isAdminEmail(email) ? "/admin" : "/dashboard", { replace: true });
+        if (response.requiresApproval) {
+          navigate("/pending-approval", { replace: true });
+          return;
+        }
+
+        navigate(response.user?.role === "admin" ? "/admin" : "/dashboard", {
+          replace: true,
+        });
         return;
       }
 
-      await verifyOtp({ email, otp: code });
+      const response = await verifyOtp({ email, otp: code });
       navigate("/reset-password", {
         replace: true,
         state: {
           resetVerified: true,
           email,
+          resetToken: response.resetToken,
         },
       });
     } catch (err) {

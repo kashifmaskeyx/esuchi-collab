@@ -65,6 +65,33 @@
   gap: 12px;
 }
 
+.register-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  background: #eef3f8;
+}
+
+.register-mode-tab {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-mode-tab.active {
+  color: #0f172a;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+}
+
 .register-name-row {
   display: flex;
   gap: 12px;
@@ -80,7 +107,9 @@
   font-size: 14px;
   color: #0f172a;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .register-input:focus {
@@ -228,7 +257,11 @@
 
 .register-page {
   background:
-    radial-gradient(circle at top left, rgba(30, 58, 138, 0.08), transparent 26rem),
+    radial-gradient(
+      circle at top left,
+      rgba(30, 58, 138, 0.08),
+      transparent 26rem
+    ),
     #f5f8fb;
 }
 

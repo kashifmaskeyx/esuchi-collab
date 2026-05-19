@@ -16,14 +16,6 @@ const getProductsFromResponse = (data) => {
   return Array.isArray(data?.products) ? data.products : [];
 };
 
-const getProductsFromResponse = (data) => {
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  return Array.isArray(data?.products) ? data.products : [];
-};
-
 export const getShipments = async () => {
   const response = await API.get("/shipments");
   return response.data;
