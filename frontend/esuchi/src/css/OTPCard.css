@@ -135,6 +135,24 @@
   opacity: 0.7;
 }
 
+.otp-secondary-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.otp-secondary-btn:hover {
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
 .otp-error {
   margin-top: 14px;
   font-size: 12px;

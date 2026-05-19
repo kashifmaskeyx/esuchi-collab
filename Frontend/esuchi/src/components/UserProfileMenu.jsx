@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  LogOut,
-  Mail,
-  UserRound,
-} from "lucide-react";
+import { LogOut, Mail, UserRound } from "lucide-react";
 import { getStoredUser, getUserInitials, logoutUser } from "../api/auth";
 import "../css/UserProfileMenu.css";
 

@@ -3,6 +3,7 @@ import "../css/LoginCard.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth.js";
+import { getDefaultUserLandingPath } from "../utils/profileSettings.js";
 import logo from "../assets/logo.png";
 import heroBg from "../assets/Login.png";
 
@@ -47,7 +48,7 @@ export default function LoginCard() {
           ? "/pending-approval"
           : isAdminLogin
             ? "/admin"
-            : "/dashboard",
+            : getDefaultUserLandingPath(),
         {
           state: {
             openNotifications: true,

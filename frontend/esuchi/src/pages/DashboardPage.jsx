@@ -15,9 +15,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import DashboardCard from "../components/DashboardCard";
+import UserProfileMenu from "../components/UserProfileMenu";
 import { getDashboardData } from "../api/dashboard";
-import { getUserInitials } from "../api/auth";
 import { getShipments } from "../api/shipments";
+import { readProfileSettings } from "../utils/profileSettings";
 import "../css/Dashboard.css";
 
 const readLoginNotification = () => {
@@ -31,7 +32,7 @@ const readLoginNotification = () => {
   }
 };
 
-const formatCurrency = (value) => {
+const formatCurrency = (value, currency = "USD") => {
   const amount = Number(value);
 
   if (Number.isNaN(amount)) {
@@ -40,7 +41,7 @@ const formatCurrency = (value) => {
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2,
   }).format(amount);
 };
@@ -102,7 +103,7 @@ const getDateKey = (value) => {
   return date.toISOString().slice(0, 10);
 };
 
-const formatShortDate = (value) => {
+const formatShortDate = (value, timeZone = "UTC") => {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -112,6 +113,7 @@ const formatShortDate = (value) => {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+    timeZone,
   }).format(date);
 };
 
@@ -119,7 +121,6 @@ export default function DashboardPage() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNotifications, setShowNotifications] = useState(
     Boolean(location.state?.openNotifications),
@@ -138,6 +139,9 @@ export default function DashboardPage() {
   const [shipments, setShipments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [profileSettings, setProfileSettings] = useState(() =>
+    readProfileSettings(),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -178,6 +182,24 @@ export default function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      setProfileSettings(event.detail || readProfileSettings());
+    };
+
+    window.addEventListener(
+      "esuchi-profile-settings-change",
+      handleSettingsChange,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "esuchi-profile-settings-change",
+        handleSettingsChange,
+      );
+    };
+  }, []);
+
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const filteredProducts = useMemo(() => {
@@ -201,9 +223,13 @@ export default function DashboardPage() {
   }, [dashboardData.products, normalizedSearch]);
 
   const metrics = useMemo(() => {
-    const lowStockItems = dashboardData.inventory.filter(
-      (item) => item.currentStock <= item.minimumStock,
-    );
+    const alertThreshold = Number(profileSettings.stockAlertThreshold) || 0;
+    const lowStockItems = dashboardData.inventory.filter((item) => {
+      const currentStock = Number(item.currentStock) || 0;
+      const minimumStock = Number(item.minimumStock) || 0;
+
+      return currentStock <= Math.max(minimumStock, alertThreshold);
+    });
     const totalUnits = dashboardData.inventory.reduce(
       (sum, item) => sum + (Number(item.currentStock) || 0),
       0,
@@ -281,16 +307,28 @@ export default function DashboardPage() {
         { label: "Suppliers", value: suppliers.size },
       ],
       revenueCards: [
-        { label: "Total Revenue", value: formatCurrency(totalRevenue) },
-        { label: "Delivered Revenue", value: formatCurrency(deliveredRevenue) },
+        {
+          label: "Total Revenue",
+          value: formatCurrency(totalRevenue, profileSettings.currency),
+        },
+        {
+          label: "Delivered Revenue",
+          value: formatCurrency(deliveredRevenue, profileSettings.currency),
+        },
       ],
       orderCards: [
         { label: "Orders", value: dashboardData.orders.length },
-        { label: "Avg Order Value", value: formatCurrency(averageOrderValue) },
+        {
+          label: "Avg Order Value",
+          value: formatCurrency(averageOrderValue, profileSettings.currency),
+        },
       ],
       returnCards: [
         { label: "Returned Units", value: returnedUnits },
-        { label: "Damage Value", value: formatCurrency(damagedValue) },
+        {
+          label: "Damage Value",
+          value: formatCurrency(damagedValue, profileSettings.currency),
+        },
       ],
       inventoryValue,
       totalRevenue,
@@ -309,6 +347,8 @@ export default function DashboardPage() {
     dashboardData.orders,
     dashboardData.products,
     dashboardData.returns,
+    profileSettings.currency,
+    profileSettings.stockAlertThreshold,
   ]);
 
   const revenueTrend = useMemo(() => {
@@ -319,7 +359,7 @@ export default function DashboardPage() {
 
       return {
         key,
-        label: formatShortDate(date),
+        label: formatShortDate(date, profileSettings.timezone),
         revenue: 0,
       };
     });
@@ -340,7 +380,7 @@ export default function DashboardPage() {
       ...day,
       height: Math.max(8, Math.round((day.revenue / maxRevenue) * 100)),
     }));
-  }, [dashboardData.orders]);
+  }, [dashboardData.orders, profileSettings.timezone]);
 
   const topSellingProducts = useMemo(() => {
     const productSales = new Map();
@@ -415,16 +455,37 @@ export default function DashboardPage() {
   }, [showNotifications]);
 
   const notifications = useMemo(() => {
-    const lowStockNotifications = metrics.lowStockItems.map((item) => ({
-      id: `low-stock-${item._id}`,
-      title: "Low stock alert",
-      message: `${item.product?.name || "Unknown product"} has ${
-        item.currentStock
-      } left. Minimum stock is ${item.minimumStock}.`,
-      tone: "danger",
-    }));
-    const shipmentNotifications = shipments
-      .filter((shipment) => ["pending", "in_transit"].includes(shipment.status))
+    const lowStockNotifications = profileSettings.lowStockAlerts
+      ? metrics.lowStockItems.map((item) => ({
+          id: `low-stock-${item._id}`,
+          title: "Low stock alert",
+          message: `${item.product?.name || "Unknown product"} has ${
+            item.currentStock
+          } left. Minimum stock is ${item.minimumStock}.`,
+          tone: "danger",
+        }))
+      : [];
+    const shipmentReminderDays =
+      Number(profileSettings.shipmentAlertWindow) || 3;
+    const shipmentReminderLimit = Date.now() + shipmentReminderDays * 86400000;
+    const shipmentNotifications = profileSettings.shipmentAlerts
+      ? shipments
+          .filter((shipment) => {
+            if (!["pending", "in_transit"].includes(shipment.status)) {
+              return false;
+            }
+
+            if (!shipment.expectedDeliveryDate) {
+              return true;
+            }
+
+            const expectedDate = new Date(shipment.expectedDeliveryDate);
+
+            return (
+              Number.isNaN(expectedDate.getTime()) ||
+              expectedDate.getTime() <= shipmentReminderLimit
+            );
+          })
       .map((shipment) => ({
         id: `shipment-${shipment._id}`,
         title: "Shipment update",
@@ -432,7 +493,21 @@ export default function DashboardPage() {
           shipment.status,
         ).toLowerCase()}.`,
         tone: shipment.status === "in_transit" ? "success" : "danger",
-      }));
+      }))
+      : [];
+    const returnNotifications = profileSettings.returnAlerts
+      ? dashboardData.returns
+          .filter((item) => item.condition !== "restockable")
+          .slice(0, 5)
+          .map((item) => ({
+            id: `return-${item._id}`,
+            title: "Return exception",
+            message: `${item.product?.name || "Returned product"} is marked ${
+              item.condition || "damaged"
+            }.`,
+            tone: "danger",
+          }))
+      : [];
 
     return [
       ...(loginNotification
@@ -440,8 +515,18 @@ export default function DashboardPage() {
         : []),
       ...lowStockNotifications,
       ...shipmentNotifications,
+      ...returnNotifications,
     ];
-  }, [loginNotification, metrics.lowStockItems, shipments]);
+  }, [
+    dashboardData.returns,
+    loginNotification,
+    metrics.lowStockItems,
+    profileSettings.lowStockAlerts,
+    profileSettings.returnAlerts,
+    profileSettings.shipmentAlertWindow,
+    profileSettings.shipmentAlerts,
+    shipments,
+  ]);
 
   const clearLoginNotification = () => {
     sessionStorage.removeItem("esuchiLoginNotification");
@@ -536,14 +621,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            <button
-              type="button"
-              className="avatar-chip"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu className="dashboard-profile-menu" />
           </div>
         </header>
 
@@ -641,7 +719,7 @@ export default function DashboardPage() {
             icon={BarChart3}
             actionText={
               <span className="card-inline-note">
-                {formatCurrency(metrics.totalRevenue)} total
+                {formatCurrency(metrics.totalRevenue, profileSettings.currency)} total
               </span>
             }
           >
@@ -654,7 +732,9 @@ export default function DashboardPage() {
                       style={{ height: `${day.height}%` }}
                     />
                   </div>
-                  <strong>{formatCurrency(day.revenue)}</strong>
+                  <strong>
+                    {formatCurrency(day.revenue, profileSettings.currency)}
+                  </strong>
                   <p>{day.label}</p>
                 </article>
               ))}
@@ -665,11 +745,15 @@ export default function DashboardPage() {
             <div className="business-snapshot-grid">
               <article>
                 <p>Inventory Value</p>
-                <strong>{formatCurrency(metrics.inventoryValue)}</strong>
+                <strong>
+                  {formatCurrency(metrics.inventoryValue, profileSettings.currency)}
+                </strong>
               </article>
               <article>
                 <p>Pending Revenue</p>
-                <strong>{formatCurrency(metrics.pendingRevenue)}</strong>
+                <strong>
+                  {formatCurrency(metrics.pendingRevenue, profileSettings.currency)}
+                </strong>
               </article>
               <article>
                 <p>Restocked Returns</p>
@@ -768,7 +852,9 @@ export default function DashboardPage() {
                       <tr key={product.id}>
                         <td>{product.name}</td>
                         <td>{product.unitsSold}</td>
-                        <td>{formatCurrency(product.revenue)}</td>
+                        <td>
+                          {formatCurrency(product.revenue, profileSettings.currency)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

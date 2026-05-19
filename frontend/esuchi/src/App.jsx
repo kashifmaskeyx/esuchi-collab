@@ -12,6 +12,7 @@ import Inventory from "./components/Inventory";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./components/ProfilePage";
+import EmailChangeOtpPage from "./components/EmailChangeOtpPage";
 import SalesOrders from "./components/SalesOrders";
 import StaffRoles from "./components/StaffRoles";
 import AdminDashboard from "./components/AdminDashboard";
@@ -86,6 +87,10 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<ApprovedRoute />}>
             <Route element={<UserRoute />}>
+              <Route
+                path="/settings/email-otp"
+                element={<EmailChangeOtpPage />}
+              />
               <Route element={<AppShell />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/inventory" element={<Inventory />} />
