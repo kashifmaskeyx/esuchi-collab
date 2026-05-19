@@ -338,7 +338,11 @@
 
 .login-page {
   background:
-    radial-gradient(circle at top left, rgba(30, 58, 138, 0.08), transparent 26rem),
+    radial-gradient(
+      circle at top left,
+      rgba(30, 58, 138, 0.08),
+      transparent 26rem
+    ),
     #f5f8fb;
 }
 
