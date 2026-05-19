@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import {
+  BarChart3,
   Bell,
   Clock3,
+  CircleDollarSign,
   Database,
   PackageCheck,
+  RotateCcw,
   Search,
   ShoppingBag,
+  ShoppingCart,
   Boxes,
+  TrendingUp,
 } from "lucide-react";
 import DashboardCard from "../components/DashboardCard";
 import { getDashboardData } from "../api/dashboard";
@@ -17,7 +22,9 @@ import "../css/Dashboard.css";
 
 const readLoginNotification = () => {
   try {
-    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    const storedNotification = sessionStorage.getItem(
+      "esuchiLoginNotification",
+    );
     return storedNotification ? JSON.parse(storedNotification) : null;
   } catch {
     return null;
@@ -85,6 +92,29 @@ const formatStatusLabel = (status) => {
     .join(" ");
 };
 
+const getDateKey = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+};
+
+const formatShortDate = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};
+
 export default function DashboardPage() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
@@ -102,6 +132,8 @@ export default function DashboardPage() {
     products: [],
     inventory: [],
     stockMovements: [],
+    orders: [],
+    returns: [],
   });
   const [shipments, setShipments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,16 +178,6 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const inventoryByProductId = useMemo(
-    () =>
-      new Map(
-        dashboardData.inventory
-          .filter((item) => item?.product?._id)
-          .map((item) => [item.product._id, item]),
-      ),
-    [dashboardData.inventory],
-  );
-
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const filteredProducts = useMemo(() => {
@@ -192,6 +214,58 @@ export default function DashboardPage() {
     const suppliers = new Set(
       dashboardData.products.map((product) => product.supplier).filter(Boolean),
     );
+    const productPriceById = new Map(
+      dashboardData.products.map((product) => [
+        product._id,
+        Number(product.price) || 0,
+      ]),
+    );
+    const inventoryValue = dashboardData.inventory.reduce((sum, item) => {
+      const productId = item.product?._id || item.product;
+      const price =
+        productPriceById.get(productId) || Number(item.product?.price) || 0;
+
+      return sum + price * (Number(item.currentStock) || 0);
+    }, 0);
+    const totalRevenue = dashboardData.orders.reduce(
+      (sum, order) => sum + (Number(order.totalAmount) || 0),
+      0,
+    );
+    const deliveredRevenue = dashboardData.orders
+      .filter((order) => order.status === "delivered")
+      .reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0);
+    const pendingRevenue = dashboardData.orders
+      .filter((order) => order.status !== "delivered")
+      .reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0);
+    const averageOrderValue = dashboardData.orders.length
+      ? totalRevenue / dashboardData.orders.length
+      : 0;
+    const returnedUnits = dashboardData.returns.reduce(
+      (sum, item) => sum + (Number(item.quantity) || 0),
+      0,
+    );
+    const damagedUnits = dashboardData.returns
+      .filter((item) => item.condition !== "restockable")
+      .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const damagedValue = dashboardData.returns
+      .filter((item) => item.condition !== "restockable")
+      .reduce(
+        (sum, item) =>
+          sum +
+          (Number(item.quantity) || 0) * (Number(item.product?.price) || 0),
+        0,
+      );
+    const restockedUnits = dashboardData.returns
+      .filter((item) => item.resolution === "restocked")
+      .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const orderStatusCounts = dashboardData.orders.reduce(
+      (counts, order) => ({
+        ...counts,
+        [order.status || "pending"]:
+          (counts[order.status || "pending"] || 0) + 1,
+      }),
+      {},
+    );
 
     return {
       summaryCards: [
@@ -206,9 +280,113 @@ export default function DashboardPage() {
         { label: "Categories", value: categories.size },
         { label: "Suppliers", value: suppliers.size },
       ],
+      revenueCards: [
+        { label: "Total Revenue", value: formatCurrency(totalRevenue) },
+        { label: "Delivered Revenue", value: formatCurrency(deliveredRevenue) },
+      ],
+      orderCards: [
+        { label: "Orders", value: dashboardData.orders.length },
+        { label: "Avg Order Value", value: formatCurrency(averageOrderValue) },
+      ],
+      returnCards: [
+        { label: "Returned Units", value: returnedUnits },
+        { label: "Damage Value", value: formatCurrency(damagedValue) },
+      ],
+      inventoryValue,
+      totalRevenue,
+      deliveredRevenue,
+      pendingRevenue,
+      averageOrderValue,
+      returnedUnits,
+      damagedUnits,
+      damagedValue,
+      restockedUnits,
+      orderStatusCounts,
       lowStockItems,
     };
-  }, [dashboardData.inventory, dashboardData.products]);
+  }, [
+    dashboardData.inventory,
+    dashboardData.orders,
+    dashboardData.products,
+    dashboardData.returns,
+  ]);
+
+  const revenueTrend = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - index));
+      const key = date.toISOString().slice(0, 10);
+
+      return {
+        key,
+        label: formatShortDate(date),
+        revenue: 0,
+      };
+    });
+    const dayMap = new Map(days.map((day) => [day.key, day]));
+
+    dashboardData.orders.forEach((order) => {
+      const key = getDateKey(order.orderDate || order.createdAt);
+      const day = key ? dayMap.get(key) : null;
+
+      if (day) {
+        day.revenue += Number(order.totalAmount) || 0;
+      }
+    });
+
+    const maxRevenue = Math.max(...days.map((day) => day.revenue), 1);
+
+    return days.map((day) => ({
+      ...day,
+      height: Math.max(8, Math.round((day.revenue / maxRevenue) * 100)),
+    }));
+  }, [dashboardData.orders]);
+
+  const topSellingProducts = useMemo(() => {
+    const productSales = new Map();
+
+    dashboardData.orders.forEach((order) => {
+      (order.orderItems ?? []).forEach((item) => {
+        const productId = item.product?._id || item.product;
+
+        if (!productId) {
+          return;
+        }
+
+        const existing = productSales.get(productId) || {
+          id: productId,
+          name: item.product?.name || "Unknown product",
+          unitsSold: 0,
+          revenue: 0,
+        };
+        const quantity = Number(item.quantity) || 0;
+        const price = Number(item.price) || Number(item.product?.price) || 0;
+
+        existing.unitsSold += quantity;
+        existing.revenue += quantity * price;
+        productSales.set(productId, existing);
+      });
+    });
+
+    return Array.from(productSales.values())
+      .filter((product) =>
+        normalizedSearch
+          ? product.name.toLowerCase().includes(normalizedSearch)
+          : true,
+      )
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [dashboardData.orders, normalizedSearch]);
+
+  const orderStatusBreakdown = useMemo(
+    () =>
+      ["pending", "shipped", "delivered"].map((status) => ({
+        status,
+        label: formatStatusLabel(status),
+        count: metrics.orderStatusCounts[status] || 0,
+      })),
+    [metrics.orderStatusCounts],
+  );
 
   useEffect(() => {
     if (!location.state?.openNotifications) {
@@ -289,22 +467,6 @@ export default function DashboardPage() {
     [dashboardData.stockMovements],
   );
 
-  const productsTableRows = useMemo(
-    () =>
-      filteredProducts.slice(0, 8).map((product) => {
-        const inventory = inventoryByProductId.get(product._id);
-
-        return {
-          id: product._id,
-          name: product.name,
-          category: product.category || "Uncategorized",
-          price: formatCurrency(product.price),
-          stock: inventory?.currentStock ?? product.quantity ?? 0,
-        };
-      }),
-    [filteredProducts, inventoryByProductId],
-  );
-
   return (
     <div className="dashboard-page">
       <main
@@ -358,9 +520,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="notification-empty">
-                      No new notifications.
-                    </p>
+                    <p className="notification-empty">No new notifications.</p>
                   )}
                 </div>
               ) : null}
@@ -392,6 +552,45 @@ export default function DashboardPage() {
         ) : null}
 
         <section className="quick-cards-grid">
+          <DashboardCard title="Revenue Analytics" icon={CircleDollarSign}>
+            <div className="metric-grid">
+              {metrics.revenueCards.map((card) => (
+                <article key={card.label} className="metric-box">
+                  <p>{card.label}</p>
+                  <div className="metric-box-footer">
+                    <h4>{card.value}</h4>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="Orders" icon={ShoppingCart}>
+            <div className="metric-grid">
+              {metrics.orderCards.map((card) => (
+                <article key={card.label} className="metric-box">
+                  <p>{card.label}</p>
+                  <div className="metric-box-footer">
+                    <h4>{card.value}</h4>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="Returns Impact" icon={RotateCcw}>
+            <div className="metric-grid">
+              {metrics.returnCards.map((card) => (
+                <article key={card.label} className="metric-box">
+                  <p>{card.label}</p>
+                  <div className="metric-box-footer">
+                    <h4>{card.value}</h4>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </DashboardCard>
+
           <DashboardCard title="Inventory Summary">
             <div className="metric-grid">
               {metrics.summaryCards.map((card) => (
@@ -431,6 +630,65 @@ export default function DashboardPage() {
                     <h4>{card.value}</h4>
                   </div>
                 </article>
+              ))}
+            </div>
+          </DashboardCard>
+        </section>
+
+        <section className="dashboard-analytics-grid">
+          <DashboardCard
+            title="7-Day Revenue Trend"
+            icon={BarChart3}
+            actionText={
+              <span className="card-inline-note">
+                {formatCurrency(metrics.totalRevenue)} total
+              </span>
+            }
+          >
+            <div className="revenue-chart">
+              {revenueTrend.map((day) => (
+                <article key={day.key} className="revenue-bar-item">
+                  <div className="revenue-bar-track">
+                    <span
+                      className="revenue-bar-fill"
+                      style={{ height: `${day.height}%` }}
+                    />
+                  </div>
+                  <strong>{formatCurrency(day.revenue)}</strong>
+                  <p>{day.label}</p>
+                </article>
+              ))}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="Business Snapshot" icon={TrendingUp}>
+            <div className="business-snapshot-grid">
+              <article>
+                <p>Inventory Value</p>
+                <strong>{formatCurrency(metrics.inventoryValue)}</strong>
+              </article>
+              <article>
+                <p>Pending Revenue</p>
+                <strong>{formatCurrency(metrics.pendingRevenue)}</strong>
+              </article>
+              <article>
+                <p>Restocked Returns</p>
+                <strong>{metrics.restockedUnits}</strong>
+              </article>
+              <article>
+                <p>Low-Stock Items</p>
+                <strong>{metrics.lowStockItems.length}</strong>
+              </article>
+            </div>
+
+            <div className="order-status-strip">
+              {orderStatusBreakdown.map((item) => (
+                <span
+                  key={item.status}
+                  className={`order-status-pill ${item.status}`}
+                >
+                  {item.label}: {item.count}
+                </span>
               ))}
             </div>
           </DashboardCard>
@@ -482,7 +740,7 @@ export default function DashboardPage() {
           </DashboardCard>
 
           <DashboardCard
-            title="Top Products"
+            title="Top Selling Products"
             icon={Boxes}
             className="products-card"
             actionText={
@@ -495,24 +753,22 @@ export default function DashboardPage() {
           >
             {isLoading ? (
               <div className="dashboard-state">Loading products...</div>
-            ) : productsTableRows.length ? (
+            ) : topSellingProducts.length ? (
               <div className="products-table-wrap">
                 <table className="products-table">
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th>Category</th>
-                      <th>Price</th>
-                      <th>Stock</th>
+                      <th>Units Sold</th>
+                      <th>Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {productsTableRows.map((product) => (
+                    {topSellingProducts.map((product) => (
                       <tr key={product.id}>
                         <td>{product.name}</td>
-                        <td>{product.category}</td>
-                        <td>{product.price}</td>
-                        <td>{product.stock}</td>
+                        <td>{product.unitsSold}</td>
+                        <td>{formatCurrency(product.revenue)}</td>
                       </tr>
                     ))}
                   </tbody>

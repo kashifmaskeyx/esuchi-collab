@@ -13,7 +13,6 @@ import { getUserInitials } from "../api/auth";
 import {
   createInventory,
   createProduct,
-  deleteInventory,
   deleteProduct,
   getProductListing,
   updateInventoryMinimum,
@@ -28,7 +27,9 @@ const getProductCode = (product, inventory) => {
     return inventory.inventoryId;
   }
 
-  return `PRD-${String(product?._id || "unknown").slice(-6).toUpperCase()}`;
+  return `PRD-${String(product?._id || "unknown")
+    .slice(-6)
+    .toUpperCase()}`;
 };
 
 const emptyForm = {
@@ -45,7 +46,9 @@ const PRODUCTS_PAGE_SIZE = 6;
 
 const readLoginNotification = () => {
   try {
-    const storedNotification = sessionStorage.getItem("esuchiLoginNotification");
+    const storedNotification = sessionStorage.getItem(
+      "esuchiLoginNotification",
+    );
     return storedNotification ? JSON.parse(storedNotification) : null;
   } catch {
     return null;
@@ -64,7 +67,10 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [listingData, setListingData] = useState({ products: [], inventory: [] });
+  const [listingData, setListingData] = useState({
+    products: [],
+    inventory: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -180,7 +186,10 @@ export default function Products() {
       listingData.products.map((product) => product.category).filter(Boolean),
     );
 
-    return ["all", ...Array.from(uniqueCategories).sort((a, b) => a.localeCompare(b))];
+    return [
+      "all",
+      ...Array.from(uniqueCategories).sort((a, b) => a.localeCompare(b)),
+    ];
   }, [listingData.products]);
 
   const productRows = useMemo(
@@ -307,11 +316,16 @@ export default function Products() {
       } else {
         await updateProduct(selectedProductId, payload);
 
-        const currentRow = productRows.find((product) => product.id === selectedProductId);
+        const currentRow = productRows.find(
+          (product) => product.id === selectedProductId,
+        );
 
         if (currentRow?.inventoryRecordId) {
           await Promise.all([
-            updateInventoryStock(currentRow.inventoryRecordId, payload.quantity),
+            updateInventoryStock(
+              currentRow.inventoryRecordId,
+              payload.quantity,
+            ),
             updateInventoryMinimum(currentRow.inventoryRecordId, minimumStock),
           ]);
         } else {
@@ -344,10 +358,6 @@ export default function Products() {
     }
 
     try {
-      if (product.inventoryRecordId) {
-        await deleteInventory(product.inventoryRecordId);
-      }
-
       await deleteProduct(product.id);
       await loadProducts(false);
     } catch (error) {
@@ -412,9 +422,7 @@ export default function Products() {
                       ))}
                     </div>
                   ) : (
-                    <p className="notification-empty">
-                      No new notifications.
-                    </p>
+                    <p className="notification-empty">No new notifications.</p>
                   )}
                 </div>
               ) : null}
@@ -438,7 +446,11 @@ export default function Products() {
               low-stock products.
             </p>
             <div className="products-hero-actions">
-              <button type="button" className="products-primary-btn" onClick={openAddModal}>
+              <button
+                type="button"
+                className="products-primary-btn"
+                onClick={openAddModal}
+              >
                 <Plus size={16} />
                 Add Product
               </button>
@@ -504,7 +516,9 @@ export default function Products() {
                   paginatedRows.map((product) => (
                     <tr
                       key={product.id}
-                      className={product.isLowStock ? "product-row-low-stock" : ""}
+                      className={
+                        product.isLowStock ? "product-row-low-stock" : ""
+                      }
                     >
                       <td>{product.name}</td>
                       <td>{product.code}</td>
@@ -518,7 +532,9 @@ export default function Products() {
                             Low stock
                           </span>
                         ) : (
-                          <span className="product-stock-badge ok">In stock</span>
+                          <span className="product-stock-badge ok">
+                            In stock
+                          </span>
                         )}
                       </td>
                       <td>
@@ -573,10 +589,16 @@ export default function Products() {
             >
               <div className="products-modal-head">
                 <div>
-                  <h2>{modalMode === "add" ? "Add Product" : "Edit Product"}</h2>
+                  <h2>
+                    {modalMode === "add" ? "Add Product" : "Edit Product"}
+                  </h2>
                   <p>Update product and inventory details from the frontend.</p>
                 </div>
-                <button type="button" className="products-modal-close" onClick={closeModal}>
+                <button
+                  type="button"
+                  className="products-modal-close"
+                  onClick={closeModal}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -584,7 +606,11 @@ export default function Products() {
               <form className="products-form" onSubmit={handleSubmit}>
                 <label>
                   <span>Product Name</span>
-                  <input name="name" value={formData.name} onChange={handleFormChange} />
+                  <input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                  />
                 </label>
 
                 <label>
@@ -649,13 +675,23 @@ export default function Products() {
                   />
                 </label>
 
-                {submitError ? <p className="products-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="products-form-error">{submitError}</p>
+                ) : null}
 
                 <div className="products-form-actions">
-                  <button type="button" className="products-secondary-btn" onClick={closeModal}>
+                  <button
+                    type="button"
+                    className="products-secondary-btn"
+                    onClick={closeModal}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="products-primary-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="products-primary-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting
                       ? "Saving..."
                       : modalMode === "add"

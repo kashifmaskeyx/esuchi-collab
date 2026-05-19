@@ -36,12 +36,18 @@
   gap: 8px;
   padding: 0 8px;
   margin-bottom: 18px;
-  transition: padding 0.28s ease, gap 0.28s ease, margin-bottom 0.28s ease;
+  transition:
+    padding 0.28s ease,
+    gap 0.28s ease,
+    margin-bottom 0.28s ease;
 }
 
 .sidebar-logo {
   width: 96px;
-  transition: width 0.28s ease, opacity 0.2s ease, transform 0.28s ease;
+  transition:
+    width 0.28s ease,
+    opacity 0.2s ease,
+    transform 0.28s ease;
 }
 
 .sidebar-panel.closed .sidebar-header {
@@ -106,7 +112,10 @@
   font-weight: 800;
   color: #475467;
   letter-spacing: 0.08em;
-  transition: margin 0.28s ease, opacity 0.2s ease, color 0.2s ease;
+  transition:
+    margin 0.28s ease,
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 
 .sidebar-panel.closed .sidebar-group-label {
@@ -146,7 +155,10 @@
 
 .sidebar-link svg,
 .sidebar-link span {
-  transition: transform 0.22s ease, opacity 0.22s ease, color 0.22s ease;
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease,
+    color 0.22s ease;
 }
 
 .sidebar-panel.closed .sidebar-link {

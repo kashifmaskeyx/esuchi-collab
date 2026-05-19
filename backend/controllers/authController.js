@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const dns = require("dns").promises;
+const net = require("net");
 const { validationResult } = require("express-validator");
 const { sendOtpEmail } = require("../config/mail");
 const {
@@ -14,8 +15,8 @@ const {
 const { getCompanyId } = require("../utils/tenant");
 
 // ================= TOKEN =================
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, {
+const signToken = (id, role) =>
+  jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 
@@ -99,6 +100,103 @@ const hasDeliverableEmailDomain = async (email) => {
   } catch {
     return false;
   }
+};
+
+const readSmtpResponse = (socket) =>
+  new Promise((resolve, reject) => {
+    let buffer = "";
+
+    const cleanup = () => {
+      socket.off("data", handleData);
+      socket.off("error", reject);
+    };
+
+    const handleData = (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split(/\r?\n/).filter(Boolean);
+      const lastLine = lines[lines.length - 1] || "";
+
+      if (/^\d{3}\s/.test(lastLine)) {
+        cleanup();
+        resolve(buffer);
+      }
+    };
+
+    socket.on("data", handleData);
+    socket.once("error", reject);
+  });
+
+const sendSmtpCommand = async (socket, command) => {
+  socket.write(`${command}\r\n`);
+  return readSmtpResponse(socket);
+};
+
+const verifyMailboxExists = async (email) => {
+  const domain = email.split("@")[1];
+
+  if (!domain) {
+    return false;
+  }
+
+  let records = [];
+
+  try {
+    records = await dns.resolveMx(domain);
+  } catch {
+    return null;
+  }
+
+  const mxHost = records.sort((a, b) => a.priority - b.priority)[0]?.exchange;
+
+  if (!mxHost) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const socket = net.createConnection(25, mxHost);
+    let settled = false;
+
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      socket.destroy();
+      resolve(result);
+    };
+
+    socket.setTimeout(7000);
+    socket.once("timeout", () => finish(null));
+    socket.once("error", () => finish(null));
+
+    socket.once("connect", async () => {
+      try {
+        await readSmtpResponse(socket);
+        await sendSmtpCommand(socket, `HELO ${process.env.SMTP_HELO_DOMAIN || "esuchi.local"}`);
+        await sendSmtpCommand(
+          socket,
+          `MAIL FROM:<${process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@esuchi.local"}>`,
+        );
+        const response = await sendSmtpCommand(socket, `RCPT TO:<${email}>`);
+        await sendSmtpCommand(socket, "QUIT").catch(() => null);
+
+        if (/^25[0-9]/m.test(response)) {
+          finish(true);
+          return;
+        }
+
+        if (/^55[013]/m.test(response) || /user unknown|no such user|mailbox unavailable|recipient address rejected/i.test(response)) {
+          finish(false);
+          return;
+        }
+
+        finish(null);
+      } catch {
+        finish(null);
+      }
+    });
+  });
 };
 
 const isNonExistentMailboxError = (error) => {
@@ -230,7 +328,7 @@ exports.verifySignupOtp = async (req, res) => {
       await migrateLegacyDataForUser(user._id, company._id);
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
     sendTokenCookie(res, token);
 
     const authUser = await reloadAuthUser(user._id);
@@ -288,7 +386,7 @@ exports.login = async (req, res) => {
         .json({ success: false, message: "Company account is deactivated" });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
     sendTokenCookie(res, token);
 
     res.json({
@@ -450,6 +548,14 @@ exports.requestEmailChangeOtp = async (req, res) => {
         .json({ success: false, message: "Email address does not exist" });
     }
 
+    const mailboxExists = await verifyMailboxExists(email);
+
+    if (mailboxExists !== true) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email address does not exist" });
+    }
+
     const existingUser = await User.findOne({
       email,
       _id: { $ne: req.user._id },
@@ -506,6 +612,12 @@ exports.updateMe = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Name and email are required" });
+    }
+
+    if (!EMAIL_PATTERN.test(email)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Enter a valid email address" });
     }
 
     const existingUser = await User.findOne({

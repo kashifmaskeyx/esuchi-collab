@@ -102,7 +102,8 @@ const faqItems = [
 export default function LandingPageV2() {
   const navigate = useNavigate();
   const hasToken =
-    typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
+    typeof window !== "undefined" &&
+    Boolean(localStorage.getItem("currentUser"));
 
   const scrollToSection = (sectionId) => {
     const section = document.getElementById(sectionId);
@@ -164,9 +165,7 @@ export default function LandingPageV2() {
           style={{ backgroundImage: `url(${warehouseHero})` }}
         >
           <div className="landing-hero-copy">
-            <h1>
-              Best Inventory and Logistics Management System in Nepal
-            </h1>
+            <h1>Best Inventory and Logistics Management System in Nepal</h1>
             <p>
               Reduce empty stocks, speed up operations with the best inventory
               software for small businesses to manage their physical inventory.
@@ -239,17 +238,23 @@ export default function LandingPageV2() {
             <article>
               <LayoutDashboard size={20} />
               <strong>Dashboard-first</strong>
-              <p>Clear summaries for inventory, products, and recent activity.</p>
+              <p>
+                Clear summaries for inventory, products, and recent activity.
+              </p>
             </article>
             <article>
               <Truck size={20} />
               <strong>Shipment-ready</strong>
-              <p>Sections that match logistics workflows and delivery tracking.</p>
+              <p>
+                Sections that match logistics workflows and delivery tracking.
+              </p>
             </article>
             <article>
               <Users size={20} />
               <strong>Team-friendly</strong>
-              <p>Useful for owners, staff, and operations teams working together.</p>
+              <p>
+                Useful for owners, staff, and operations teams working together.
+              </p>
             </article>
           </div>
         </section>

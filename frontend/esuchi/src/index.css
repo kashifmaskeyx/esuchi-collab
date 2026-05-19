@@ -177,7 +177,11 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top left, rgba(35, 92, 148, 0.08), transparent 28rem),
+    radial-gradient(
+      circle at top left,
+      rgba(35, 92, 148, 0.08),
+      transparent 28rem
+    ),
     var(--app-bg);
   color: var(--app-text);
   font-family:

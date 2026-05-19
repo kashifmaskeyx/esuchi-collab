@@ -1,5 +1,10 @@
 import React, { useMemo } from "react";
-import { BadgeDollarSign, CircleDollarSign, PackageCheck, ShoppingCart } from "lucide-react";
+import {
+  BadgeDollarSign,
+  CircleDollarSign,
+  PackageCheck,
+  ShoppingCart,
+} from "lucide-react";
 import DashboardCard from "./DashboardCard";
 
 const formatCurrency = (value) =>
@@ -44,7 +49,9 @@ export default function AdminRevenue({ orders = [] }) {
       (sum, order) => sum + (Number(order.totalAmount) || 0),
       0,
     );
-    const deliveredOrders = orders.filter((order) => order.status === "delivered");
+    const deliveredOrders = orders.filter(
+      (order) => order.status === "delivered",
+    );
     const deliveredRevenue = deliveredOrders.reduce(
       (sum, order) => sum + (Number(order.totalAmount) || 0),
       0,
@@ -93,11 +100,9 @@ export default function AdminRevenue({ orders = [] }) {
   return (
     <div className="admin-revenue-view">
       <section className="admin-revenue-metrics">
-        {revenueSummary.map(({ label, value, icon: Icon }) => (
+        {revenueSummary.map(({ label, value, icon }) => (
           <article className="admin-revenue-metric" key={label}>
-            <span>
-              <Icon size={20} />
-            </span>
+            <span>{React.createElement(icon, { size: 20 })}</span>
             <div>
               <p>{label}</p>
               <strong>{value}</strong>
@@ -110,7 +115,9 @@ export default function AdminRevenue({ orders = [] }) {
         title="Revenue Orders"
         icon={CircleDollarSign}
         className="products-card"
-        actionText={<span className="card-inline-note">{orders.length} orders</span>}
+        actionText={
+          <span className="card-inline-note">{orders.length} orders</span>
+        }
       >
         <div className="products-table-wrap">
           <table className="products-table">

@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Truck,
   Boxes,
+  RotateCcw,
   LogOut,
   PanelLeftClose,
   X,
@@ -21,6 +22,7 @@ const mainItems = [
   { label: "Inventory", icon: Boxes, path: "/inventory" },
   { label: "Products", icon: Package, path: "/products" },
   { label: "Sales Orders", icon: ShoppingCart, path: "/orders" },
+  { label: "Returns", icon: RotateCcw, path: "/returns" },
   { label: "Shipment", icon: Truck, path: "/shipment" },
   { label: "Staff & Roles", icon: ShieldCheck, path: "/staff" },
 ];
@@ -79,8 +81,8 @@ function Sidebar({ isOpen, onClose, onToggle }) {
       <button
         type="button"
         className="sidebar-logout-btn"
-        onClick={() => {
-          logoutUser();
+        onClick={async () => {
+          await logoutUser();
           navigate("/login");
         }}
       >

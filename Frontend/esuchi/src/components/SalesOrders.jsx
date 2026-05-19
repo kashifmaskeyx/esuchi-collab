@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Bell,
@@ -44,8 +44,10 @@ export default function SalesOrders() {
   const { sidebarOpen } = useOutletContext();
   const navigate = useNavigate();
   const currentUser = useMemo(() => getStoredUser(), []);
-  const isAdminUser =
-    currentUser?.role === "admin" || isAdminEmail(currentUser?.email);
+  const isAdminUser = useMemo(
+    () => currentUser?.role === "admin" || isAdminEmail(currentUser?.email),
+    [currentUser],
+  );
   const userInitials = useMemo(() => getUserInitials(), []);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -69,27 +71,35 @@ export default function SalesOrders() {
     [products],
   );
 
-  const getOrderProductName = (item) => {
-    if (item.product?.name) {
-      return item.product.name;
-    }
+  const getOrderProductName = useCallback(
+    (item) => {
+      if (item.product?.name) {
+        return item.product.name;
+      }
 
-    const productId =
-      typeof item.product === "string" ? item.product : item.product?._id;
+      const productId =
+        typeof item.product === "string" ? item.product : item.product?._id;
 
-    return productById.get(productId)?.name || "Unknown product";
-  };
+      return productById.get(productId)?.name || "Unknown product";
+    },
+    [productById],
+  );
 
-  const getOrderProductSummary = (order) =>
-    (order.orderItems ?? [])
-      .map((item) => {
-        const quantity = Number(item.quantity) || 0;
-        return `${getOrderProductName(item)} (${quantity})`;
-      })
-      .join(", ");
+  const getOrderProductSummary = useCallback(
+    (order) =>
+      (order.orderItems ?? [])
+        .map((item) => {
+          const quantity = Number(item.quantity) || 0;
+          return `${getOrderProductName(item)} (${quantity})`;
+        })
+        .join(", "),
+    [getOrderProductName],
+  );
 
   const loadOrders = async () => {
-    const response = isAdminUser ? await getAdminOrders() : await getSalesOrders();
+    const response = isAdminUser
+      ? await getAdminOrders()
+      : await getSalesOrders();
     setOrders(response.data ?? []);
   };
 
@@ -129,7 +139,7 @@ export default function SalesOrders() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAdminUser]);
 
   const filteredOrders = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -147,7 +157,7 @@ export default function SalesOrders() {
         .toLowerCase()
         .includes(normalized);
     });
-  }, [orders, productById, searchTerm]);
+  }, [getOrderProductSummary, orders, searchTerm]);
 
   const stats = useMemo(() => {
     const totalRevenue = orders.reduce(
@@ -167,7 +177,11 @@ export default function SalesOrders() {
         value: orders.filter((order) => order.status === "delivered").length,
         icon: PackageCheck,
       },
-      { label: "Revenue", value: formatCurrency(totalRevenue), icon: CircleDollarSign },
+      {
+        label: "Revenue",
+        value: formatCurrency(totalRevenue),
+        icon: CircleDollarSign,
+      },
     ];
   }, [orders]);
 
@@ -271,7 +285,11 @@ export default function SalesOrders() {
         <header className="ops-topbar">
           <h1 className="ops-page-title">Sales Orders</h1>
           <div className="ops-topbar-right">
-            <button type="button" className="ops-icon-btn" aria-label="Notifications">
+            <button
+              type="button"
+              className="ops-icon-btn"
+              aria-label="Notifications"
+            >
               <Bell size={18} />
             </button>
             <button
@@ -288,7 +306,10 @@ export default function SalesOrders() {
         <section className="ops-hero">
           <div>
             <h2>Track every sale from order to delivery.</h2>
-            <p>Watch revenue, fulfillment status, and product demand in one place.</p>
+            <p>
+              Watch revenue, fulfillment status, and product demand in one
+              place.
+            </p>
           </div>
           <button
             type="button"
@@ -382,7 +403,9 @@ export default function SalesOrders() {
                             {order.status}
                           </span>
                         </td>
-                        <td>{formatDate(order.orderDate || order.createdAt)}</td>
+                        <td>
+                          {formatDate(order.orderDate || order.createdAt)}
+                        </td>
                         <td>
                           <div className="ops-row-actions">
                             <button
@@ -420,13 +443,20 @@ export default function SalesOrders() {
 
         {isCreateModalOpen ? (
           <div className="ops-modal-backdrop" onClick={closeModals}>
-            <div className="ops-modal ops-modal-small" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="ops-modal ops-modal-small"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="ops-modal-head">
                 <div>
                   <h2>New Sales Order</h2>
                   <p>Create an order from available products.</p>
                 </div>
-                <button type="button" className="ops-modal-close" onClick={closeModals}>
+                <button
+                  type="button"
+                  className="ops-modal-close"
+                  onClick={closeModals}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -436,7 +466,10 @@ export default function SalesOrders() {
                   <select
                     value={form.product}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, product: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        product: event.target.value,
+                      }))
                     }
                   >
                     <option value="">Select product</option>
@@ -454,16 +487,29 @@ export default function SalesOrders() {
                     min="1"
                     value={form.quantity}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, quantity: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        quantity: event.target.value,
+                      }))
                     }
                   />
                 </label>
-                {submitError ? <p className="ops-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="ops-form-error">{submitError}</p>
+                ) : null}
                 <div className="ops-form-actions">
-                  <button type="button" className="ops-secondary-btn" onClick={closeModals}>
+                  <button
+                    type="button"
+                    className="ops-secondary-btn"
+                    onClick={closeModals}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="ops-primary-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="ops-primary-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Creating..." : "Create Order"}
                   </button>
                 </div>
@@ -474,13 +520,20 @@ export default function SalesOrders() {
 
         {selectedOrder ? (
           <div className="ops-modal-backdrop" onClick={closeModals}>
-            <div className="ops-modal ops-modal-small" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="ops-modal ops-modal-small"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="ops-modal-head">
                 <div>
                   <h2>Update Status</h2>
                   <p>Move this sales order through fulfillment.</p>
                 </div>
-                <button type="button" className="ops-modal-close" onClick={closeModals}>
+                <button
+                  type="button"
+                  className="ops-modal-close"
+                  onClick={closeModals}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -496,12 +549,22 @@ export default function SalesOrders() {
                     <option value="delivered">Delivered</option>
                   </select>
                 </label>
-                {submitError ? <p className="ops-form-error">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="ops-form-error">{submitError}</p>
+                ) : null}
                 <div className="ops-form-actions">
-                  <button type="button" className="ops-secondary-btn" onClick={closeModals}>
+                  <button
+                    type="button"
+                    className="ops-secondary-btn"
+                    onClick={closeModals}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="ops-primary-btn" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="ops-primary-btn"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Saving..." : "Save Status"}
                   </button>
                 </div>
