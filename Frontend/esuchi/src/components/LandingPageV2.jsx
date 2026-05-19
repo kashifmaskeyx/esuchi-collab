@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import warehouseHero from "../assets/ware.jpg";
+import { sendLandingChatMessage } from "../api/chatbot";
+import ChatBotWidget from "./ChatBotWidget";
 import "../css/LandingPageV2.css";
 
 const featureCards = [
@@ -320,6 +322,17 @@ export default function LandingPageV2() {
           </div>
         </section>
       </main>
+      <ChatBotWidget
+        variant="landing"
+        title="eSuchi AI Guide"
+        subtitle="Always Active"
+        introBubble="Ask the eSuchi AI assistant anything about the system."
+        initialMessage="Hi, I am the eSuchi AI assistant. Ask me anything about the website, features, roles, or navigation."
+        placeholder="Type your message..."
+        storageKey="esuchi_landing_ai_chat_history_v3"
+        sessionStorageKey="esuchi_landing_chat_session"
+        sendMessage={sendLandingChatMessage}
+      />
     </div>
   );
 }

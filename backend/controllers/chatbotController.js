@@ -3,13 +3,8 @@ const Product = require("../models/productModel");
 const StockMovement = require("../models/stockMovementModel");
 const Order = require("../models/orderModel");
 const createAuditLog = require("../utils/auditLogger");
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-const LANDING_RELEVANCE_THRESHOLD = Number(
-  process.env.LANDING_CHAT_RELEVANCE_THRESHOLD || 0.65,
-);
-const LANDING_LOW_CONFIDENCE_THRESHOLD = Number(
-  process.env.LANDING_CHAT_LOW_CONFIDENCE_THRESHOLD || 0.8,
-);
+const { actorFields, companyQuery } = require("../utils/tenant");
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const LANDING_SESSION_TTL_MS = Number(
   process.env.LANDING_CHAT_SESSION_TTL_MS || 15 * 60 * 1000,
 );
@@ -18,12 +13,14 @@ const LANDING_SESSION_MAX_TURNS = Number(
 );
 const landingSessionStore = new Map();
 
-const LANDING_SCOPE_MESSAGE =
-  "I can only help with questions about this Inventory and Logistics Management System. Please ask about features, services, setup, or FAQs.";
-
 const LANDING_KNOWLEDGE_BASE = {
   systemOverview:
     "Esuchi is an Inventory and Logistics Management System designed to help teams track stock, manage products and suppliers, process orders, monitor shipments, and maintain audit visibility.",
+  navigation: [
+    "Admins should log in through the normal login page and will be routed to the admin dashboard when their account role is admin.",
+    "Regular users and staff should log in through the normal login page and will be routed to their dashboard after approval.",
+    "New visitors can create an account from Get started or register, then wait for company approval if required.",
+  ],
   features: [
     "Product management to create and maintain product records.",
     "Inventory tracking with stock levels and minimum stock thresholds.",
@@ -65,7 +62,37 @@ const LANDING_KNOWLEDGE_BASE = {
       answer:
         "Yes. Audit logs can capture important actions for accountability and review.",
     },
+    {
+      question: "How do I add a product?",
+      answer:
+        "After logging in, open Products, choose the add/create product action, enter product details, then save it. Inventory can then track stock for that product.",
+    },
+    {
+      question: "How do I view stock?",
+      answer:
+        "After logging in, open Inventory to view current stock, minimum stock levels, and stock status.",
+    },
+    {
+      question: "Where should admins log in?",
+      answer:
+        "Admins use the same login page. Approved admin accounts are routed to the admin dashboard.",
+    },
   ],
+};
+
+const APP_NAVIGATION_HELP = {
+  dashboard:
+    "Use Dashboard for a quick overview of products, orders, inventory activity, and low-stock signals.",
+  inventory:
+    "Use Inventory to view stock levels, minimum stock thresholds, and items that may need restocking.",
+  products:
+    "Use Products to add or edit product records, prices, categories, suppliers, and descriptions.",
+  shipments:
+    "Use Shipments to track logistics status and delivery progress.",
+  orders:
+    "Use Orders or Sales Orders to review customer order activity and order status.",
+  staff:
+    "Admins can use Users or Staff to review team members, roles, and approval status.",
 };
 
 const startOfToday = () => {
@@ -73,11 +100,66 @@ const startOfToday = () => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 };
 
-const getLowStockResponse = async (userId) => {
-  const lowStockItems = await Inventory.find({
-    user: userId,
-    $expr: { $lt: ["$currentStock", "$minimumStock"] },
-  }).populate("product", "name");
+const startOfWeek = () => {
+  const now = startOfToday();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(now.setDate(diff));
+};
+
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isAdminUser = (req) => req.user?.role === "admin";
+
+const scopedCompanyQuery = (req, query = {}) => {
+  const baseQuery = companyQuery(req, query);
+  return isAdminUser(req) ? baseQuery : { ...baseQuery, user: req.user._id };
+};
+
+const getStockUrgency = (currentStock, minimumStock) => {
+  const current = Number(currentStock) || 0;
+  const minimum = Number(minimumStock) || 0;
+
+  if (minimum <= 0) return "Monitor";
+  if (current <= 0 || current <= minimum * 0.5) return "Critical";
+  if (current < minimum) return "Warning";
+  if (current <= minimum * 1.25) return "Monitor";
+  return "Healthy";
+};
+
+const getLowStockRows = async (req, includeMonitor = false) => {
+  const thresholdExpression = includeMonitor
+    ? { $lte: ["$currentStock", { $multiply: ["$minimumStock", 1.25] }] }
+    : { $lt: ["$currentStock", "$minimumStock"] };
+
+  const rows = await Inventory.find({
+    ...scopedCompanyQuery(req),
+    $expr: thresholdExpression,
+  }).populate("product", "name category supplier");
+
+  return rows
+    .map((item) => {
+      const urgency = getStockUrgency(item.currentStock, item.minimumStock);
+      return {
+        inventoryId: item._id,
+        productId: item.product?._id,
+        productName: item.product?.name || "Unknown product",
+        category: item.product?.category || "Uncategorized",
+        currentStock: item.currentStock,
+        minimumStock: item.minimumStock,
+        shortage: Math.max(0, item.minimumStock - item.currentStock),
+        urgency,
+      };
+    })
+    .sort((a, b) => {
+      const ranks = { Critical: 0, Warning: 1, Monitor: 2, Healthy: 3 };
+      return ranks[a.urgency] - ranks[b.urgency] || b.shortage - a.shortage;
+    });
+};
+
+const getLowStockResponse = async (req, includeMonitor = false) => {
+  const lowStockItems = await getLowStockRows(req, includeMonitor);
 
   if (!lowStockItems.length) {
     return {
@@ -89,53 +171,233 @@ const getLowStockResponse = async (userId) => {
 
   return {
     intent: "LOW_STOCK_REPORT",
-    message: `${lowStockItems.length} product(s) are below minimum stock.`,
-    data: lowStockItems.map((item) => ({
-      inventoryId: item._id,
-      productId: item.product?._id,
-      productName: item.product?.name || "Unknown product",
-      currentStock: item.currentStock,
-      minimumStock: item.minimumStock,
-      shortage: item.minimumStock - item.currentStock,
-    })),
+    message: [
+      `${lowStockItems.length} product(s) need attention.`,
+      ...lowStockItems.slice(0, 5).map(
+        (item, index) =>
+          `${index + 1}. ${item.productName}: ${item.currentStock}/${item.minimumStock} units (${item.urgency}).`,
+      ),
+    ].join("\n"),
+    data: {
+      items: lowStockItems,
+      suggestions: [
+        "What needs restocking now?",
+        "What moved most this week?",
+        "Am I at risk of stockouts?",
+      ],
+    },
   };
 };
 
-const getSummaryResponse = async (userId) => {
+const getSummaryResponse = async (req) => {
   const today = startOfToday();
-  const [todayOrders, totalInventories, lowStockCount, todayMovements] =
+  const weekStart = startOfWeek();
+  const scopeQuery = scopedCompanyQuery(req);
+  const [todayOrders, totalInventories, lowStockItems, todayMovements, weekMovements] =
     await Promise.all([
-      Order.find({ user: userId, createdAt: { $gte: today } }),
-      Inventory.countDocuments({ user: userId }),
-      Inventory.countDocuments({
-        user: userId,
-        $expr: { $lt: ["$currentStock", "$minimumStock"] },
-      }),
-      StockMovement.countDocuments({
-        user: userId,
-        createdAt: { $gte: today },
-      }),
+      Order.find({ ...scopeQuery, createdAt: { $gte: today } }),
+      Inventory.countDocuments(scopeQuery),
+      getLowStockRows(req, false),
+      StockMovement.find({ ...scopeQuery, createdAt: { $gte: today } }).populate(
+        "product",
+        "name",
+      ),
+      StockMovement.find({ ...scopeQuery, createdAt: { $gte: weekStart } }).populate(
+        "product",
+        "name",
+      ),
     ]);
 
   const totalRevenueToday = todayOrders.reduce(
     (sum, order) => sum + (Number(order.totalAmount) || 0),
     0,
   );
+  const unitsInToday = todayMovements
+    .filter((movement) => movement.movementType === "IN")
+    .reduce((sum, movement) => sum + (Number(movement.quantity) || 0), 0);
+  const unitsOutToday = todayMovements
+    .filter((movement) => movement.movementType === "OUT")
+    .reduce((sum, movement) => sum + (Number(movement.quantity) || 0), 0);
+  const weeklyMovementMap = new Map();
+
+  weekMovements.forEach((movement) => {
+    const key = String(movement.product?._id || movement.product || "unknown");
+    const current = weeklyMovementMap.get(key) || {
+      productId: key,
+      productName: movement.product?.name || "Unknown product",
+      totalUnits: 0,
+    };
+    current.totalUnits += Number(movement.quantity) || 0;
+    weeklyMovementMap.set(key, current);
+  });
+
+  const topMovedProducts = [...weeklyMovementMap.values()]
+    .sort((a, b) => b.totalUnits - a.totalUnits)
+    .slice(0, 5);
+  const stockoutRisks = lowStockItems
+    .filter((item) => item.urgency === "Critical" || item.urgency === "Warning")
+    .slice(0, 5);
 
   return {
     intent: "OPERATIONS_SUMMARY",
-    message: `Today: ${todayOrders.length} order(s), ${todayMovements} stock movement(s), ${lowStockCount} low-stock item(s).`,
+    message: [
+      `Today: ${todayOrders.length} order(s), ${todayMovements.length} stock movement(s), ${lowStockItems.length} low-stock item(s).`,
+      `Units moved today: ${unitsInToday} in, ${unitsOutToday} out.`,
+      topMovedProducts.length
+        ? `Top moved this week: ${topMovedProducts
+            .map((item) => `${item.productName} (${item.totalUnits})`)
+            .join(", ")}.`
+        : "No stock movements recorded this week yet.",
+      stockoutRisks.length
+        ? `Stockout risk: ${stockoutRisks
+            .map((item) => `${item.productName} (${item.urgency})`)
+            .join(", ")}.`
+        : "No products are currently at stockout risk.",
+    ].join("\n"),
     data: {
       ordersToday: todayOrders.length,
       revenueToday: totalRevenueToday,
       inventoryItems: totalInventories,
-      lowStockItems: lowStockCount,
-      stockMovementsToday: todayMovements,
+      lowStockItems: lowStockItems.length,
+      stockMovementsToday: todayMovements.length,
+      unitsInToday,
+      unitsOutToday,
+      topMovedProducts,
+      stockoutRisks,
+      suggestions: [
+        "What moved most this week?",
+        "Which products are critically low?",
+        "How do I add stock?",
+      ],
     },
   };
 };
 
-const applyStockMovement = async (userId, action) => {
+const findProductForAction = async (req, action) => {
+  if (action.productId) {
+    return Product.findOne(scopedCompanyQuery(req, { _id: action.productId }));
+  }
+
+  const productName = String(action.productName || "").trim();
+  if (!productName) return null;
+
+  return Product.findOne(
+    scopedCompanyQuery(req, {
+      name: { $regex: new RegExp(escapeRegex(productName), "i") },
+    }),
+  );
+};
+
+const getStockPreview = (inventory, movementType, quantity) => {
+  const numericQuantity = Number(quantity);
+  let projectedStock = inventory.currentStock;
+
+  if (movementType === "IN") projectedStock += numericQuantity;
+  if (movementType === "OUT") projectedStock -= numericQuantity;
+  if (movementType === "ADJUSTMENT") projectedStock = numericQuantity;
+
+  return projectedStock;
+};
+
+const getConfirmationResponse = async (req, action) => {
+  const numericQuantity = Number(action.quantity);
+  const movementType = String(action.movementType || "").toUpperCase();
+
+  if (!["IN", "OUT", "ADJUSTMENT"].includes(movementType)) {
+    return {
+      intent: "ACTION_NEEDS_DETAILS",
+      message:
+        "Tell me the stock action type: IN, OUT, or ADJUSTMENT. Example: add 10 units to Rice.",
+      data: {
+        suggestions: [
+          "Add 10 units to a product",
+          "Remove 5 units from a product",
+          "Adjust a product to 20 units",
+        ],
+      },
+    };
+  }
+
+  if (!Number.isFinite(numericQuantity) || numericQuantity < 1) {
+    return {
+      intent: "ACTION_NEEDS_DETAILS",
+      message: "Tell me a quantity greater than 0 for the stock movement.",
+      data: {
+        suggestions: ["Add 10 units", "Remove 5 units", "Adjust to 20 units"],
+      },
+    };
+  }
+
+  const product = await findProductForAction(req, action);
+  if (!product) {
+    return {
+      intent: "ACTION_NEEDS_DETAILS",
+      message:
+        "I could not find that product in your inventory scope. Please include the exact product name.",
+      data: {
+        suggestions: ["Show low stock items", "Open Products", "Cancel"],
+      },
+    };
+  }
+
+  const inventory = await Inventory.findOne(
+    scopedCompanyQuery(req, { product: product._id }),
+  );
+  if (!inventory) {
+    return {
+      intent: "ACTION_NEEDS_DETAILS",
+      message: `I found ${product.name}, but it does not have an inventory record yet.`,
+      data: {
+        suggestions: ["Open Inventory", "Open Products", "Cancel"],
+      },
+    };
+  }
+
+  const projectedStock = getStockPreview(inventory, movementType, numericQuantity);
+  if (movementType === "OUT" && projectedStock < 0) {
+    return {
+      intent: "ACTION_BLOCKED",
+      message: `${product.name} only has ${inventory.currentStock} units, so I cannot remove ${numericQuantity}.`,
+      data: {
+        suggestions: ["Show low stock items", "Cancel"],
+      },
+    };
+  }
+
+  const pendingAction = {
+    type: "CREATE_MOVEMENT",
+    productId: product._id,
+    productName: product.name,
+    movementType,
+    quantity: numericQuantity,
+    movementDate: action.movementDate,
+    confirmLowStock: Boolean(action.confirmLowStock),
+  };
+
+  return {
+    intent: "CONFIRM_STOCK_ACTION",
+    message: [
+      "Please confirm this stock movement before I update the database:",
+      `Product: ${product.name}`,
+      `Movement: ${movementType}`,
+      `Quantity: ${numericQuantity}`,
+      `Current stock: ${inventory.currentStock}`,
+      `Projected stock: ${projectedStock}`,
+      projectedStock < inventory.minimumStock
+        ? `Warning: projected stock is below the minimum level of ${inventory.minimumStock}.`
+        : null,
+      "Reply Confirm to proceed, or Cancel to stop.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    data: {
+      pendingAction,
+      suggestions: ["Confirm", "Cancel"],
+    },
+  };
+};
+
+const applyStockMovement = async (req, action) => {
   const { productId, movementType, quantity, movementDate, confirmLowStock } =
     action;
 
@@ -157,8 +419,8 @@ const applyStockMovement = async (userId, action) => {
   }
 
   const [product, inventory] = await Promise.all([
-    Product.findOne({ _id: productId, user: userId }),
-    Inventory.findOne({ product: productId, user: userId }),
+    Product.findOne(scopedCompanyQuery(req, { _id: productId })),
+    Inventory.findOne(scopedCompanyQuery(req, { product: productId })),
   ]);
 
   if (!product) {
@@ -219,7 +481,7 @@ const applyStockMovement = async (userId, action) => {
 
   const movement = await StockMovement.create({
     product: product._id,
-    user: userId,
+    ...actorFields(req),
     movementType,
     quantity: numericQuantity,
     movementDate: parsedMovementDate,
@@ -246,20 +508,23 @@ const applyStockMovement = async (userId, action) => {
   };
 };
 
-const getChatbotContext = async (userId) => {
+const getChatbotContext = async (req) => {
   const today = startOfToday();
+  const scopeQuery = scopedCompanyQuery(req);
   const [lowStockItems, todayOrdersCount, todayMovements] = await Promise.all([
     Inventory.find({
-      user: userId,
+      ...scopeQuery,
       $expr: { $lt: ["$currentStock", "$minimumStock"] },
     })
       .populate("product", "name")
       .limit(5),
-    Order.countDocuments({ user: userId, createdAt: { $gte: today } }),
-    StockMovement.countDocuments({ user: userId, createdAt: { $gte: today } }),
+    Order.countDocuments({ ...scopeQuery, createdAt: { $gte: today } }),
+    StockMovement.countDocuments({ ...scopeQuery, createdAt: { $gte: today } }),
   ]);
 
   return {
+    role: req.user?.role || "user",
+    scope: isAdminUser(req) ? "company-wide" : "your own records",
     todayOrdersCount,
     todayMovements,
     lowStockCount: lowStockItems.length,
@@ -277,10 +542,14 @@ const callGemini = async ({ message, context }) => {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
   const prompt = [
-    "You are an inventory operations assistant.",
+    "You are the eSuchi Inventory Copilot inside an authenticated dashboard.",
     "Keep responses concise and practical.",
-    "If user requests stock-changing action, ask them to use action.type='CREATE_MOVEMENT'.",
+    "Answer navigation questions about Dashboard, Inventory, Products, Shipments, Orders, Staff, and Settings.",
+    "Use live business context when relevant.",
+    "Never claim a stock write has happened unless the backend action already confirmed it.",
+    "If the user requests a stock-changing action, tell them you will ask for confirmation first.",
     "Use the business context below when relevant.",
+    `Navigation guide: ${JSON.stringify(APP_NAVIGATION_HELP)}`,
     `Context: ${JSON.stringify(context)}`,
     `User message: ${message}`,
   ].join("\n");
@@ -310,63 +579,32 @@ const callGemini = async ({ message, context }) => {
   return aiText;
 };
 
-const scoreLandingDomainRelevance = (message = "") => {
-  const normalized = String(message || "").toLowerCase();
-  const tokens = normalized.split(/[^a-z0-9]+/).filter(Boolean);
-  if (!tokens.length) {
-    return {
-      score: 0,
-      isRelevant: false,
-      matchedKeywords: [],
-    };
-  }
-
-  const keywords = [
-    "inventory",
-    "stock",
-    "movement",
-    "warehouse",
-    "logistics",
-    "shipment",
-    "shipments",
-    "delivery",
-    "order",
-    "orders",
-    "product",
-    "products",
-    "supplier",
-    "suppliers",
-    "staff",
-    "dashboard",
-    "feature",
-    "features",
-    "service",
-    "services",
-    "faq",
-    "support",
-    "pricing",
-    "plan",
-    "plans",
-    "setup",
-    "onboarding",
-    "restock",
-    "low",
-  ];
-
-  const matchedKeywords = keywords.filter((keyword) =>
-    normalized.includes(keyword),
-  );
-
-  const score = Math.min(1, matchedKeywords.length / 3);
-  return {
-    score,
-    isRelevant: score >= LANDING_RELEVANCE_THRESHOLD,
-    matchedKeywords,
-  };
-};
-
 const classifyLandingIntent = (message = "") => {
   const normalized = String(message || "").toLowerCase();
+
+  if (
+    normalized.includes("login") ||
+    normalized.includes("log in") ||
+    normalized.includes("signin") ||
+    normalized.includes("sign in") ||
+    normalized.includes("admin") ||
+    normalized.includes("user path") ||
+    normalized.includes("role") ||
+    normalized.includes("navigate") ||
+    normalized.includes("where do")
+  ) {
+    return "NAVIGATION_HELP";
+  }
+
+  if (
+    normalized.includes("add product") ||
+    normalized.includes("create product") ||
+    normalized.includes("view stock") ||
+    normalized.includes("step") ||
+    normalized.includes("how do i")
+  ) {
+    return "TASK_GUIDE";
+  }
 
   if (
     normalized.includes("faq") ||
@@ -418,14 +656,17 @@ const callLandingGemini = async ({
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
   const prompt = [
-    "You are the public landing-page assistant for an Inventory and Logistics Management System.",
-    "Answer only using the knowledge base provided below.",
-    "If information is not in the knowledge base, say that it is not available and suggest contacting support.",
-    "Do not answer unrelated questions.",
+    "You are the public AI chatbot for eSuchi, an Inventory and Logistics Management System website.",
+    "Answer the visitor's actual question naturally, like a helpful website assistant.",
+    "Use the website context below when the question is about eSuchi, inventory, logistics, account roles, login paths, navigation, or system features.",
+    "Guide new visitors to the correct login path for Admin or User roles.",
+    "Provide step-by-step guidance for common tasks like adding products and viewing stock.",
+    "If the user asks something outside the website/system, answer briefly and gently bring them back to eSuchi when useful.",
+    "Do not invent pricing, emails, phone numbers, or policies that are not in context.",
     "Keep the tone friendly and concise.",
     `Detected intent: ${intent}`,
     `Recent conversation: ${JSON.stringify(history || [])}`,
-    `Knowledge base: ${JSON.stringify(knowledgeBase)}`,
+    `Website context: ${JSON.stringify(knowledgeBase)}`,
     `User question: ${message}`,
   ].join("\n");
 
@@ -451,93 +692,6 @@ const callLandingGemini = async ({
       .trim() || "";
 
   return aiText || null;
-};
-
-const getLandingFallbackResponse = (intent) => {
-  if (intent === "FEATURE_EXPLAIN") {
-    return "Core features include product management, inventory tracking, stock movement logging, order handling, shipment monitoring, supplier/staff management, and audit logs.";
-  }
-  if (intent === "SERVICE_INFO") {
-    return "The system focuses on inventory and logistics operations visibility, low-stock control, and authenticated API-based workflows with audit traceability.";
-  }
-  if (intent === "FAQ") {
-    const faqPreview = LANDING_KNOWLEDGE_BASE.faqs
-      .slice(0, 3)
-      .map((faq, idx) => `${idx + 1}. ${faq.question}`)
-      .join(" ");
-    return `Here are common FAQs: ${faqPreview}`;
-  }
-  if (intent === "LIVE_AGENT") {
-    return "I can help with system information here. If you want a live person, please use the contact/support option on this page.";
-  }
-  return LANDING_KNOWLEDGE_BASE.systemOverview;
-};
-
-const getLandingSuggestions = (intent) => {
-  if (intent === "FEATURE_EXPLAIN") {
-    return [
-      "Do you want a quick overview of each core module?",
-      "Would you like to know how low-stock alerts work?",
-      "Should I explain order and shipment tracking next?",
-    ];
-  }
-  if (intent === "SERVICE_INFO") {
-    return [
-      "Do you want support and onboarding details?",
-      "Should I explain what operations visibility includes?",
-      "Would you like a quick FAQ list about services?",
-    ];
-  }
-  if (intent === "FAQ") {
-    return [
-      "Do you want FAQs about inventory tracking?",
-      "Should I list FAQs about stock movement safety?",
-      "Would you like FAQs about shipment and order flow?",
-    ];
-  }
-  if (intent === "LIVE_AGENT") {
-    return [
-      "Do you want me to summarize features before handoff?",
-      "Should I share common setup FAQs first?",
-      "Would you like service/support details while you wait?",
-    ];
-  }
-  return [
-    "Do you want a feature overview?",
-    "Should I explain services and support?",
-    "Would you like to see common FAQs?",
-  ];
-};
-
-const getClarifyingQuestion = (message) => {
-  const normalized = String(message || "").toLowerCase();
-  if (normalized.includes("feature") || normalized.includes("module")) {
-    return "Do you want details on inventory, shipments, orders, or all features?";
-  }
-  if (
-    normalized.includes("service") ||
-    normalized.includes("support") ||
-    normalized.includes("pricing")
-  ) {
-    return "Are you asking about support/onboarding, or about plans and pricing?";
-  }
-  return "Could you clarify if you want information about features, services, or FAQs?";
-};
-
-const getFollowUpQuestion = (intent) => {
-  if (intent === "FEATURE_EXPLAIN") {
-    return "Would you like a deeper explanation of inventory tracking or shipment management?";
-  }
-  if (intent === "SERVICE_INFO") {
-    return "Do you want support and onboarding details next?";
-  }
-  if (intent === "FAQ") {
-    return "Would you like more FAQs focused on stock and logistics workflows?";
-  }
-  if (intent === "LIVE_AGENT") {
-    return "Would you like a quick summary prepared before you contact a live agent?";
-  }
-  return "Would you like a quick overview of features, services, or FAQs?";
 };
 
 const getLandingSessionKey = (req, bodySessionId) => {
@@ -579,14 +733,165 @@ const saveLandingSessionTurn = (sessionKey, userMessage, assistantMessage) => {
   });
 };
 
+const includesAny = (value, terms) =>
+  terms.some((term) => value.includes(term));
+
+const classifyAppIntent = (message = "") => {
+  const normalized = String(message || "").toLowerCase();
+
+  if (message === "__CHATBOT_OPEN__") return "OPEN_ALERTS";
+  if (
+    includesAny(normalized, [
+      "low stock",
+      "restock",
+      "critically low",
+      "critical",
+      "below minimum",
+      "stockout",
+      "stock out",
+      "risk",
+    ])
+  ) {
+    return "LOW_STOCK_REPORT";
+  }
+  if (
+    includesAny(normalized, [
+      "summary",
+      "today",
+      "dashboard",
+      "moved most",
+      "top moved",
+      "this week",
+      "orders processed",
+      "units moved",
+    ])
+  ) {
+    return "OPERATIONS_SUMMARY";
+  }
+  if (
+    includesAny(normalized, [
+      "where",
+      "navigate",
+      "open",
+      "go to",
+      "find",
+      "how do i",
+      "how can i",
+      "add product",
+      "view stock",
+      "shipment",
+      "shipments",
+      "orders",
+      "staff",
+      "settings",
+    ])
+  ) {
+    return "NAVIGATION_HELP";
+  }
+
+  return "AI_CHAT";
+};
+
+const parseStockAction = (message = "") => {
+  const normalized = String(message || "").trim();
+  const lower = normalized.toLowerCase();
+
+  let movementType = null;
+  if (includesAny(lower, ["add", "restock", "receive", "increase", "stock in"])) {
+    movementType = "IN";
+  }
+  if (
+    includesAny(lower, ["remove", "deduct", "decrease", "stock out", "sell", "sold"])
+  ) {
+    movementType = "OUT";
+  }
+  if (includesAny(lower, ["adjust", "set stock", "set inventory"])) {
+    movementType = "ADJUSTMENT";
+  }
+  if (!movementType) return null;
+
+  const quantityMatch = lower.match(/\b(\d+)\b/);
+  const quantity = quantityMatch ? Number(quantityMatch[1]) : null;
+  const productPatterns = [
+    /\b(?:to|for|from|of)\s+(.+)$/i,
+    /\b(?:units?|items?)\s+(.+)$/i,
+  ];
+  let productName = "";
+
+  for (const pattern of productPatterns) {
+    const match = normalized.match(pattern);
+    if (match?.[1]) {
+      productName = match[1]
+        .replace(/\b(confirm|please|now|today)\b/gi, "")
+        .trim();
+      break;
+    }
+  }
+
+  if (!productName && quantityMatch) {
+    productName = normalized.slice(quantityMatch.index + quantityMatch[0].length).trim();
+  }
+
+  return {
+    type: "CREATE_MOVEMENT",
+    movementType,
+    quantity,
+    productName,
+  };
+};
+
+const getOpenAlertsResponse = async (req) => {
+  const lowStockItems = await getLowStockRows(req, true);
+  const criticalItems = lowStockItems.filter((item) => item.urgency === "Critical");
+
+  if (!criticalItems.length) {
+    return {
+      intent: "OPEN_ALERTS",
+      message:
+        "Inventory Copilot is ready. No critical stock alerts right now. You can ask about low stock, today's summary, or navigation.",
+      data: {
+        suggestions: [
+          "Show low stock items",
+          "Give me today's summary",
+          "What moved most this week?",
+        ],
+      },
+    };
+  }
+
+  return {
+    intent: "OPEN_ALERTS",
+    message: [
+      `Critical stock alert: ${criticalItems.length} product(s) need urgent attention.`,
+      ...criticalItems
+        .slice(0, 4)
+        .map((item) => `${item.productName}: ${item.currentStock}/${item.minimumStock} units.`),
+      "Ask 'what needs restocking now?' for the full ranked list.",
+    ].join("\n"),
+    data: {
+      items: criticalItems,
+      suggestions: [
+        "What needs restocking now?",
+        "Am I at risk of stockouts?",
+        "Give me today's summary",
+      ],
+    },
+  };
+};
+
 exports.chat = async (req, res) => {
   try {
     const { message = "", action } = req.body || {};
-    const normalized = String(message || "").toLowerCase();
+    const trimmedMessage = String(message || "").trim();
 
     let result;
     if (action?.type === "CREATE_MOVEMENT") {
-      result = await applyStockMovement(req.user._id, action);
+      if (!action.confirmed) {
+        result = await getConfirmationResponse(req, action);
+        return res.json({ success: true, ...result });
+      }
+
+      result = await applyStockMovement(req, action);
       await createAuditLog({
         userId: req.user._id,
         action: "CHATBOT_CREATE_MOVEMENT",
@@ -597,12 +902,59 @@ exports.chat = async (req, res) => {
       return res.status(result.status).json(result.body);
     }
 
+    const parsedStockAction = parseStockAction(trimmedMessage);
+    if (parsedStockAction) {
+      result = await getConfirmationResponse(req, parsedStockAction);
+      await createAuditLog({
+        userId: req.user._id,
+        action: "CHATBOT_QUERY",
+        entity: "Chatbot",
+        newData: {
+          message: trimmedMessage,
+          intent: result.intent,
+          requestedAction: parsedStockAction,
+        },
+        req,
+      });
+      return res.json({ success: true, ...result });
+    }
+
+    const intent = classifyAppIntent(trimmedMessage);
+    if (intent === "OPEN_ALERTS") {
+      result = await getOpenAlertsResponse(req);
+      return res.json({ success: true, ...result });
+    }
+
+    if (intent === "LOW_STOCK_REPORT") {
+      result = await getLowStockResponse(req, true);
+      await createAuditLog({
+        userId: req.user._id,
+        action: "CHATBOT_QUERY",
+        entity: "Chatbot",
+        newData: { message: trimmedMessage, intent: result.intent },
+        req,
+      });
+      return res.json({ success: true, ...result });
+    }
+
+    if (intent === "OPERATIONS_SUMMARY") {
+      result = await getSummaryResponse(req);
+      await createAuditLog({
+        userId: req.user._id,
+        action: "CHATBOT_QUERY",
+        entity: "Chatbot",
+        newData: { message: trimmedMessage, intent: result.intent },
+        req,
+      });
+      return res.json({ success: true, ...result });
+    }
+
     let aiReply = null;
     let usedGemini = false;
 
     try {
-      const context = await getChatbotContext(req.user._id);
-      aiReply = await callGemini({ message, context });
+      const context = await getChatbotContext(req);
+      aiReply = await callGemini({ message: trimmedMessage, context });
       usedGemini = Boolean(aiReply);
     } catch (geminiError) {
       usedGemini = false;
@@ -610,38 +962,24 @@ exports.chat = async (req, res) => {
 
     if (usedGemini) {
       result = {
-        intent: "AI_CHAT",
+        intent,
         message: aiReply,
         data: null,
       };
     } else {
-      if (
-        normalized.includes("low stock") ||
-        normalized.includes("restock") ||
-        normalized.includes("below minimum")
-      ) {
-        result = await getLowStockResponse(req.user._id);
-      } else if (
-        normalized.includes("summary") ||
-        normalized.includes("today") ||
-        normalized.includes("dashboard")
-      ) {
-        result = await getSummaryResponse(req.user._id);
-      } else {
-        result = {
-          intent: "HELP",
-          message:
-            "Ask for 'low stock' or 'summary'. You can also send action.type='CREATE_MOVEMENT' to update stock safely.",
-          data: null,
-        };
-      }
+      result = {
+        intent: "AI_UNAVAILABLE",
+        message:
+          "AI is not configured yet. Add GEMINI_API_KEY to backend/.env and restart the backend server.",
+        data: null,
+      };
     }
 
     await createAuditLog({
       userId: req.user._id,
       action: "CHATBOT_QUERY",
       entity: "Chatbot",
-      newData: { message, intent: result.intent, usedGemini },
+      newData: { message: trimmedMessage, intent: result.intent, usedGemini },
       req,
     });
 
@@ -667,33 +1005,7 @@ exports.landingChat = async (req, res) => {
 
     const recentHistory = getLandingSessionHistory(sessionKey);
     const intent = classifyLandingIntent(trimmedMessage);
-    const relevance = scoreLandingDomainRelevance(trimmedMessage);
-    const isIntentClearlyInDomain =
-      intent === "FEATURE_EXPLAIN" ||
-      intent === "SERVICE_INFO" ||
-      intent === "FAQ" ||
-      intent === "LIVE_AGENT";
-    const shouldTreatAsRelevant = relevance.isRelevant || isIntentClearlyInDomain;
-    if (!shouldTreatAsRelevant) {
-      const clarifyingQuestion = getClarifyingQuestion(trimmedMessage);
-      const outOfScopeMessage = `${LANDING_SCOPE_MESSAGE} ${clarifyingQuestion}`;
-      saveLandingSessionTurn(sessionKey, trimmedMessage, outOfScopeMessage);
-      return res.json({
-        success: true,
-        intent: "IRRELEVANT_QUERY",
-        message: outOfScopeMessage,
-        sessionId: sessionKey,
-        relevanceScore: relevance.score,
-        suggestions: [
-          "What features does this system provide?",
-          "How does low-stock tracking work?",
-          "What services and support are available?",
-        ],
-      });
-    }
-
     let botMessage = null;
-    let usedGemini = false;
 
     try {
       botMessage = await callLandingGemini({
@@ -702,34 +1014,30 @@ exports.landingChat = async (req, res) => {
         history: recentHistory,
         knowledgeBase: LANDING_KNOWLEDGE_BASE,
       });
-      usedGemini = Boolean(botMessage);
     } catch (error) {
-      usedGemini = false;
+      botMessage = null;
     }
 
     if (!botMessage) {
-      botMessage = getLandingFallbackResponse(intent);
+      return res.status(503).json({
+        success: false,
+        intent: "AI_UNAVAILABLE",
+        message:
+          "AI is not configured yet. Add GEMINI_API_KEY to backend/.env and restart the backend server.",
+        sessionId: sessionKey,
+      });
     }
-    const needsClarification = relevance.score < LANDING_LOW_CONFIDENCE_THRESHOLD;
-    const followUpQuestion = needsClarification
-      ? getClarifyingQuestion(trimmedMessage)
-      : getFollowUpQuestion(intent);
-    const finalMessage = `${botMessage}\n\n${followUpQuestion}`;
-    saveLandingSessionTurn(sessionKey, trimmedMessage, finalMessage);
+
+    saveLandingSessionTurn(sessionKey, trimmedMessage, botMessage);
 
     res.json({
       success: true,
       intent,
-      message: finalMessage,
+      message: botMessage,
       sessionId: sessionKey,
-      relevanceScore: relevance.score,
-      usedGemini,
-      confidence: needsClarification ? "LOW" : "NORMAL",
+      usedGemini: true,
       data: {
-        matchedKeywords: relevance.matchedKeywords,
         historyLength: getLandingSessionHistory(sessionKey).length,
-        followUpQuestion,
-        suggestions: getLandingSuggestions(intent),
       },
     });
   } catch (error) {

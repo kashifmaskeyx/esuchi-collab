@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import AdminRevenue from "./AdminRevenue";
+import ChatBotWidget from "./ChatBotWidget";
 import DashboardCard from "./DashboardCard";
 import Pagination from "./Pagination";
 import {
@@ -44,6 +45,7 @@ import {
   updateAdminUserRole,
 } from "../api/auth";
 import { getDashboardData } from "../api/dashboard";
+import { sendAppChatMessage } from "../api/chatbot";
 import { approveStaff, rejectStaff } from "../api/staff";
 import {
   createSalesOrder,
@@ -2730,6 +2732,16 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : null}
+      <ChatBotWidget
+        variant="app"
+        title="eSuchi Admin Copilot"
+        subtitle="Company-wide AI assistant"
+        introBubble="Ask the eSuchi AI assistant about your admin workspace."
+        initialMessage="Hi, I am the eSuchi AI assistant for admins. Ask me anything about company inventory, dashboard navigation, users, or stock work."
+        placeholder="Ask about company operations..."
+        storageKey="esuchi_admin_ai_chat_history_v3"
+        sendMessage={sendAppChatMessage}
+      />
     </div>
   );
 }
