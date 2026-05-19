@@ -9,10 +9,7 @@ const {
   deleteSupplier,
 } = require("../controllers/supplierController");
 
-const {
-  protect,
-  requireApprovedCompany,
-} = require("../middlewares/authMiddleware");
+const { protect, requireApprovedCompany } = require("../middlewares/authMiddleware");
 
 router.use(protect, requireApprovedCompany);
 

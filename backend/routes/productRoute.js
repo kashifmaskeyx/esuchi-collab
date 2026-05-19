@@ -2,7 +2,10 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const controller = require("../controllers/productController");
-const { protect, requireApprovedCompany } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  requireApprovedCompany,
+} = require("../middlewares/authMiddleware");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
