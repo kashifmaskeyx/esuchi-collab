@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { protect, requireApprovedCompany } = require("../middlewares/authMiddleware");
+const {
+  protect,
+  requireApprovedCompany,
+} = require("../middlewares/authMiddleware");
 
 const {
   createInventory,

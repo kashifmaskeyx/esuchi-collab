@@ -1,51 +1,56 @@
-const mongoose = require("mongoose");
+const buckets = new Map();
 
-const auditLogSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+const defaultKeyGenerator = (req) => `${req.ip}:${req.originalUrl}`;
 
-    company: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
-      index: true,
-    },
+const createRateLimiter = ({
+  windowMs = 15 * 60 * 1000,
+  max = 30,
+  keyGenerator = defaultKeyGenerator,
+  message = "Too many requests. Please try again later.",
+} = {}) => {
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = keyGenerator(req);
+    const existing = buckets.get(key);
 
-    action: {
-      type: String,
-      required: true,
-    },
+    if (!existing || existing.resetAt <= now) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
 
-    entity: {
-      type: String,
-      required: true,
-    },
+    if (existing.count >= max) {
+      const retryAfterSeconds = Math.ceil((existing.resetAt - now) / 1000);
+      res.set("Retry-After", String(retryAfterSeconds));
+      return res.status(429).json({ success: false, message });
+    }
 
-    entityId: {
-      type: mongoose.Schema.Types.ObjectId,
-    },
+    existing.count += 1;
+    return next();
+  };
+};
 
-    oldData: {
-      type: Object,
-    },
+const emailKey = (req) => {
+  const email = String(req.body?.email || "")
+    .trim()
+    .toLowerCase();
+  return `${req.ip}:${req.path}:${email || "no-email"}`;
+};
 
-    newData: {
-      type: Object,
-    },
+exports.authRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+});
 
-    ipAddress: {
-      type: String,
-    },
+exports.otpRequestRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: emailKey,
+  message: "Too many code requests. Please wait before trying again.",
+});
 
-    userAgent: {
-      type: String,
-    },
-  },
-  {
-    timestamps: true,
-  },
-);
-
-module.exports = mongoose.model("auditlogModel", auditLogSchema);
+exports.otpVerifyRateLimit = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  keyGenerator: emailKey,
+  message: "Too many verification attempts. Please wait before trying again.",
+});
