@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import warehouseHero from "../assets/ware.jpg";
+import { sendLandingChatMessage } from "../api/chatbot";
+import ChatBotWidget from "./ChatBotWidget";
 import "../css/LandingPageV2.css";
 
 const featureCards = [
@@ -320,6 +322,22 @@ export default function LandingPageV2() {
           </div>
         </section>
       </main>
+      <ChatBotWidget
+        variant="landing"
+        title="eSuchi AI Guide"
+        subtitle="Always Active"
+        introBubble="Hi! I'm your eSuchi guide. How can I help you manage your logistics today?"
+        initialMessage="Namaste! I can answer FAQs, explain eSuchi features, share service details, or help you understand inventory and shipment workflows. What's on your mind?"
+        placeholder="Type your message..."
+        suggestions={[
+          "How to track shipments?",
+          "Pricing plans",
+          "Contact Support",
+        ]}
+        storageKey="esuchi_landing_chat_history"
+        sessionStorageKey="esuchi_landing_chat_session"
+        sendMessage={sendLandingChatMessage}
+      />
     </div>
   );
 }
