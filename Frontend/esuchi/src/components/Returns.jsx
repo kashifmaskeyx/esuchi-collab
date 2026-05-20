@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -10,10 +10,10 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import { getSalesOrders } from "../api/orders";
 import { getProductListing } from "../api/products";
 import { createReturn, getReturns } from "../api/returns";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Operations.css";
 
 const emptyForm = {
@@ -50,8 +50,6 @@ const getConditionLabel = (condition) => {
 
 export default function Returns() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [returns, setReturns] = useState([]);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -278,14 +276,7 @@ export default function Returns() {
             >
               <Bell size={18} />
             </button>
-            <button
-              type="button"
-              className="ops-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              {userInitials}
-            </button>
+            <UserProfileMenu className="ops-profile-menu" />
           </div>
         </header>
 

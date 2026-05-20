@@ -199,6 +199,17 @@ const verifyMailboxExists = async (email) => {
   });
 };
 
+const validateEmailCanReceiveOtp = async (email) => {
+  const hasDeliverableDomain = await hasDeliverableEmailDomain(email);
+
+  if (!hasDeliverableDomain) {
+    return false;
+  }
+
+  const mailboxExists = await verifyMailboxExists(email);
+  return mailboxExists === true;
+};
+
 const isNonExistentMailboxError = (error) => {
   const responseCode = Number(error?.responseCode);
   const message = `${error?.message || ""} ${error?.response || ""}`.toLowerCase();
@@ -540,17 +551,9 @@ exports.requestEmailChangeOtp = async (req, res) => {
         .json({ success: false, message: "Enter a different email address" });
     }
 
-    const hasDeliverableDomain = await hasDeliverableEmailDomain(email);
+    const canReceiveOtp = await validateEmailCanReceiveOtp(email);
 
-    if (!hasDeliverableDomain) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email address does not exist" });
-    }
-
-    const mailboxExists = await verifyMailboxExists(email);
-
-    if (mailboxExists !== true) {
+    if (!canReceiveOtp) {
       return res
         .status(400)
         .json({ success: false, message: "Email address does not exist" });
@@ -719,12 +722,6 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    if (newPassword !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ success: false, message: "New passwords do not match" });
-    }
-
     const user = await User.findById(req.user._id).select("+password");
 
     if (!user) {
@@ -735,6 +732,19 @@ exports.changePassword = async (req, res) => {
       return res
         .status(401)
         .json({ success: false, message: "Current password is incorrect" });
+    }
+
+    if (newPassword === currentPassword || (await user.matchPassword(newPassword))) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "New passwords do not match" });
     }
 
     user.password = newPassword;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,9 +12,10 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { getUserInitials } from "../api/auth";
 import { createStockMovement, getInventoryPageData } from "../api/inventory";
 import Pagination from "./Pagination";
+import UserProfileMenu from "./UserProfileMenu";
+import { readProfileSettings } from "../utils/profileSettings";
 import "../css/Inventory.css";
 
 const emptyMovementForm = {
@@ -121,8 +122,6 @@ const getMovementLabel = (movementType) => {
 
 export default function Inventory() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   const [loginNotification, setLoginNotification] = useState(() =>
@@ -144,6 +143,9 @@ export default function Inventory() {
   const [movementForm, setMovementForm] = useState(emptyMovementForm);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileSettings, setProfileSettings] = useState(() =>
+    readProfileSettings(),
+  );
 
   const loadInventoryData = async (keepLoading = true) => {
     try {
@@ -169,6 +171,24 @@ export default function Inventory() {
 
   useEffect(() => {
     loadInventoryData();
+  }, []);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      setProfileSettings(event.detail || readProfileSettings());
+    };
+
+    window.addEventListener(
+      "esuchi-profile-settings-change",
+      handleSettingsChange,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "esuchi-profile-settings-change",
+        handleSettingsChange,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -240,15 +260,22 @@ export default function Inventory() {
   );
 
   const notifications = useMemo(() => {
-    const lowStockNotifications = inventoryRows
-      .filter((row) => row.status !== "healthy")
+    const alertThreshold = Number(profileSettings.stockAlertThreshold) || 0;
+    const lowStockNotifications = profileSettings.lowStockAlerts
+      ? inventoryRows
+      .filter(
+        (row) =>
+          row.status !== "healthy" ||
+          Number(row.currentStock) <= alertThreshold,
+      )
       .slice(0, 5)
       .map((row) => ({
         id: `low-stock-${row.id}`,
         title: "Low stock alert",
         message: `${row.productName} has ${row.currentStock} left. Minimum stock is ${row.minimumStock}.`,
         tone: "danger",
-      }));
+      }))
+      : [];
 
     return [
       ...(loginNotification
@@ -256,7 +283,12 @@ export default function Inventory() {
         : []),
       ...lowStockNotifications,
     ];
-  }, [inventoryRows, loginNotification]);
+  }, [
+    inventoryRows,
+    loginNotification,
+    profileSettings.lowStockAlerts,
+    profileSettings.stockAlertThreshold,
+  ]);
 
   const clearLoginNotification = () => {
     sessionStorage.removeItem("esuchiLoginNotification");
@@ -267,7 +299,7 @@ export default function Inventory() {
     () =>
       pageData.movements.map((movement) => ({
         id: movement._id,
-        movementId: movement.movementId || movement._id,
+        movementId: String(movement.movementId || movement._id || ""),
         productName: movement.product?.name || "Unknown product",
         movementType: normalizeMovementType(movement.movementType),
         quantity: Number(movement.quantity) || 0,
@@ -305,8 +337,9 @@ export default function Inventory() {
         row.movementId.toLowerCase().includes(normalizedSearch) ||
         row.createdBy.toLowerCase().includes(normalizedSearch);
 
+      const selectedMovementType = normalizeMovementType(movementFilter);
       const matchesType =
-        movementFilter === "all" || row.movementType === movementFilter;
+        movementFilter === "all" || row.movementType === selectedMovementType;
 
       return matchesSearch && matchesType;
     });
@@ -569,14 +602,7 @@ export default function Inventory() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="inventory-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu className="inventory-profile-menu" />
           </div>
         </header>
 

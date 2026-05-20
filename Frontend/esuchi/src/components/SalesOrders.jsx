@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   Bell,
   CircleDollarSign,
@@ -11,7 +11,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { getStoredUser, getUserInitials, isAdminEmail } from "../api/auth";
+import { getStoredUser, isAdminEmail } from "../api/auth";
 import {
   createSalesOrder,
   deleteSalesOrder,
@@ -20,6 +20,7 @@ import {
   updateSalesOrderStatus,
 } from "../api/orders";
 import { getProductListing } from "../api/products";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Operations.css";
 
 const formatCurrency = (value) =>
@@ -42,13 +43,11 @@ const formatDate = (value) => {
 
 export default function SalesOrders() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
   const currentUser = useMemo(() => getStoredUser(), []);
   const isAdminUser = useMemo(
     () => currentUser?.role === "admin" || isAdminEmail(currentUser?.email),
     [currentUser],
   );
-  const userInitials = useMemo(() => getUserInitials(), []);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -292,14 +291,7 @@ export default function SalesOrders() {
             >
               <Bell size={18} />
             </button>
-            <button
-              type="button"
-              className="ops-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              {userInitials}
-            </button>
+            <UserProfileMenu className="ops-profile-menu" />
           </div>
         </header>
 

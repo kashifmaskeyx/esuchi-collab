@@ -164,6 +164,42 @@
   --app-focus: 0 0 0 4px rgba(35, 92, 148, 0.16);
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-blue: #6eb6ff;
+  --app-blue-strong: #9dccff;
+  --app-blue-soft: #123452;
+  --app-bg: #0f1720;
+  --app-surface: #17212f;
+  --app-surface-soft: #111b28;
+  --app-text: #eef5fb;
+  --app-muted: #a9b7c6;
+  --app-border: #2b3a4d;
+  --app-border-strong: #40546b;
+  --app-shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
+  --app-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.24);
+  --app-focus: 0 0 0 4px rgba(110, 182, 255, 0.22);
+}
+
+:root[data-density="compact"] {
+  --app-compact-scale: 0.86;
+}
+
+:root[data-density="compact"] .dashboard-card,
+:root[data-density="compact"] .profile-panel,
+:root[data-density="compact"] .inventory-panel,
+:root[data-density="compact"] .products-panel,
+:root[data-density="compact"] .ops-panel,
+:root[data-density="compact"] .shipping-panel {
+  padding: 14px;
+}
+
+:root[data-density="compact"] table th,
+:root[data-density="compact"] table td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -194,6 +230,16 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(110, 182, 255, 0.12),
+      transparent 28rem
+    ),
+    var(--app-bg);
 }
 
 button,

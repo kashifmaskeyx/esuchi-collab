@@ -35,6 +35,7 @@ import AdminRevenue from "./AdminRevenue";
 import ChatBotWidget from "./ChatBotWidget";
 import DashboardCard from "./DashboardCard";
 import Pagination from "./Pagination";
+import UserProfileMenu from "./UserProfileMenu";
 import {
   ADMIN_EMAIL,
   getAdminUsers,
@@ -1604,14 +1605,10 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <button
-              type="button"
-              className="avatar-chip"
-              onClick={() => setActiveAdminView("Settings")}
-              aria-label="Open admin settings"
-            >
-              <span>{userInitials}</span>
-            </button>
+            <UserProfileMenu
+              className="dashboard-profile-menu"
+              onProfileClick={() => setActiveAdminView("Settings")}
+            />
           </div>
         </header>
 

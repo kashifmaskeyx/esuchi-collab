@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   Bell,
   Check,
@@ -13,7 +13,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { getCurrentUser, getStoredUser, getUserInitials } from "../api/auth";
+import { getCurrentUser, getStoredUser } from "../api/auth";
 import {
   approveStaff,
   createStaff,
@@ -22,6 +22,7 @@ import {
   rejectStaff,
   updateStaff,
 } from "../api/staff";
+import UserProfileMenu from "./UserProfileMenu";
 import "../css/Operations.css";
 
 const emptyPermissions = {
@@ -48,9 +49,7 @@ const permissionLabels = {
 
 export default function StaffRoles() {
   const { sidebarOpen } = useOutletContext();
-  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
-  const userInitials = useMemo(() => getUserInitials(), []);
   const joinCode = currentUser?.company?.joinCode;
   const [staff, setStaff] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -318,14 +317,7 @@ export default function StaffRoles() {
             >
               <Bell size={18} />
             </button>
-            <button
-              type="button"
-              className="ops-avatar"
-              onClick={() => navigate("/settings")}
-              aria-label="Open account settings"
-            >
-              {userInitials}
-            </button>
+            <UserProfileMenu className="ops-profile-menu" />
           </div>
         </header>
 
